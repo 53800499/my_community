@@ -3,7 +3,9 @@ import {
   Get,
   Post,
   Put,
+  Delete,
   Param,
+  Query,
   Body,
   HttpCode,
   HttpStatus,
@@ -14,12 +16,14 @@ import {
   ApiOperation,
   ApiResponse,
   ApiParam,
+  ApiQuery,
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../../identity/presentation/http/guards/jwt-auth.guard.js';
 import { CurrentUser } from '../../../../identity/presentation/http/decorators/current-user.decorator.js';
 import { UserAccountEntity } from '../../../../identity/domain/entities/user-account.entity.js';
 import { RegisterAssociationUseCase } from '../../../application/commands/register-association.use-case.js';
+import { DeleteAssociationUseCase } from '../../../application/commands/delete-association.use-case.js';
 import { LinkCommunityUseCase } from '../../../application/commands/link-community.use-case.js';
 import { ManageAssociationMemberUseCase } from '../../../application/commands/manage-association-member.use-case.js';
 import { CreateAssociationPositionUseCase } from '../../../application/commands/create-association-position.use-case.js';
@@ -83,6 +87,7 @@ export class AssociationsController {
     private readonly updateAssociationMandateUseCase: UpdateAssociationMandateUseCase,
     private readonly activateAssociationMandateUseCase: ActivateAssociationMandateUseCase,
     private readonly updateMemberProfessionalInfoUseCase: UpdateMemberProfessionalInfoUseCase,
+    private readonly deleteAssociationUseCase: DeleteAssociationUseCase,
   ) {}
 
   @Get()
@@ -125,6 +130,41 @@ export class AssociationsController {
       result.members,
       result.linkedCommunityIds,
     );
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Dissoudre et supprimer une association',
+    description: 'Supprime une association après vérification des privilèges du président ou administrateur et confirmation anti-erreur.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Identifiant unique de l’association à dissoudre',
+    format: 'uuid',
+  })
+  @ApiQuery({
+    name: 'confirmationName',
+    required: false,
+    description: 'Nom exact de l’association pour double confirmation de sécurité',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Association dissoute et supprimée avec succès.',
+  })
+  public async deleteAssociation(
+    @CurrentUser() currentUser: UserAccountEntity,
+    @Param('id') id: string,
+    @Query('confirmationName') confirmationName?: string,
+  ): Promise<{ success: boolean; associationId: string }> {
+    return this.deleteAssociationUseCase.execute({
+      associationId: id,
+      userId: currentUser.id,
+      isPlatformAdmin: currentUser.isPlatformAdmin,
+      confirmationName,
+    });
   }
 
   @Post()

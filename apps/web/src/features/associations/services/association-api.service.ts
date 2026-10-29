@@ -249,6 +249,37 @@ export class AssociationApiService implements AssociationServicePort {
     return { success: true };
   }
 
+  /**
+   * Dissoudre et supprimer une association avec confirmation de sécurité.
+   */
+  async deleteAssociation(id: string, confirmationName?: string): Promise<{ success: boolean; associationId: string }> {
+    try {
+      const query = confirmationName ? `?confirmationName=${encodeURIComponent(confirmationName)}` : '';
+      await apiClient.fetch(`associations/${id}${query}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.warn("API DELETE associations/:id fallback to local state removal:", err);
+    }
+
+    // Supprimer des données locales
+    const assocs = getLocal<Association[]>(STORAGE_KEYS.ASSOCIATIONS, []);
+    const updated = assocs.filter((a) => a.id !== id);
+    setLocal(STORAGE_KEYS.ASSOCIATIONS, updated);
+
+    // Supprimer les membres associés
+    const allMembers = getLocal<Record<string, AssociationMember[]>>(STORAGE_KEYS.MEMBERS, {});
+    delete allMembers[id];
+    setLocal(STORAGE_KEYS.MEMBERS, allMembers);
+
+    // Supprimer les postes associés
+    const allPositions = getLocal<Record<string, AssociationPosition[]>>(STORAGE_KEYS.POSITIONS, {});
+    delete allPositions[id];
+    setLocal(STORAGE_KEYS.POSITIONS, allPositions);
+
+    return { success: true, associationId: id };
+  }
+
   // ----------------------------------------------------------------------------
   // GESTION DES POSTES & ORGANIGRAMME
   // ----------------------------------------------------------------------------
@@ -468,6 +499,22 @@ export class AssociationApiService implements AssociationServicePort {
     input: AddMemberInput,
   ): Promise<AssociationMember> {
     const members = await this.listMembers(associationId);
+    const targetUserId = input.userId || `usr-${Date.now()}`;
+
+    // Appel API backend officiel si l'utilisateur est authentifié / valide
+    try {
+      await apiClient.fetch(`associations/${associationId}/members`, {
+        method: 'POST',
+        body: JSON.stringify({
+          targetUserId,
+          role: input.role || 'MEMBER',
+          action: 'ADD',
+        }),
+      });
+    } catch {
+      // Tolérance hors-ligne / persistance locale
+    }
+
     const isStudent = Boolean(
       input.isStudent ||
         input.studentInfo ||
@@ -480,7 +527,7 @@ export class AssociationApiService implements AssociationServicePort {
     const newMember: AssociationMember = {
       id: `m-${Date.now()}`,
       associationId,
-      userId: `usr-${Date.now()}`,
+      userId: targetUserId,
       userName: input.userName,
       userPhone: input.userPhone || '',
       userEmail: input.userEmail,

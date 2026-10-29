@@ -41,6 +41,7 @@ export default function CommunitiesPage() {
   const [myProposals, setMyProposals] = useState<ApiCommunityProposal[]>([]);
   const [adminProposals, setAdminProposals] = useState<ApiCommunityProposal[]>([]);
   const [myMemberships, setMyMemberships] = useState<ApiMembership[]>([]);
+  const [joiningId, setJoiningId] = useState<string | null>(null);
 
   const [filter, setFilter] = useState<"ALL" | "TERRITORIAL" | "THEMATIC">("ALL");
   const [searchTerm, setSearchTerm] = useState("");
@@ -95,18 +96,45 @@ export default function CommunitiesPage() {
   const handleToggleJoin = async (id: string) => {
     requireAuth(async () => {
       const existing = myMemberships.find((m) => m.communityId === id);
-      if (!existing || existing.status === "REVOKED") {
-        try {
-          const newMem = await apiService.communities.requestMembership(id);
-          setMyMemberships((prev) => [newMem, ...prev.filter((m) => m.communityId !== id)]);
+      if (existing?.status === "ACTIVE") {
+        showInfo("Vous êtes déjà membre actif de cet espace citoyen.");
+        return;
+      }
+      if (existing?.status === "PENDING") {
+        showInfo("Votre demande d'adhésion est en cours d'instruction par les gestionnaires.");
+        return;
+      }
+
+      setJoiningId(id);
+      try {
+        const newMem = await apiService.communities.requestMembership(id);
+        setMyMemberships((prev) => [newMem, ...prev.filter((m) => m.communityId !== id)]);
+        if (newMem.status === "PENDING") {
           showSuccess("Demande d'adhésion soumise ! Elle sera examinée par le bureau local.");
-        } catch (err) {
+        } else {
+          showSuccess("Vous avez rejoint la communauté !");
+        }
+      } catch (err: unknown) {
+        const errMsg = String((err as { message?: string; detail?: string })?.message || (err as { detail?: string })?.detail || "");
+        if (errMsg.includes("en attente")) {
+          setMyMemberships((prev) => [
+            {
+              id: `pending-${id}`,
+              communityId: id,
+              status: "PENDING",
+              userId: "current",
+              joinedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              roles: ["MEMBER"],
+            },
+            ...prev.filter((m) => m.communityId !== id),
+          ]);
+          showInfo("Votre demande d'adhésion est déjà en cours d'instruction par les gestionnaires.");
+        } else {
           showError(err, "Demande d'adhésion impossible");
         }
-      } else if (existing.status === "ACTIVE") {
-        showInfo("Vous êtes déjà membre actif de cet espace citoyen.");
-      } else if (existing.status === "PENDING") {
-        showInfo("Votre demande d'adhésion est en cours d'instruction par les gestionnaires.");
+      } finally {
+        setJoiningId(null);
       }
     });
   };
@@ -467,13 +495,16 @@ export default function CommunitiesPage() {
 
                     <button
                       type="button"
+                      disabled={isJoined || isPending || joiningId === com.id}
                       onClick={() => handleToggleJoin(com.id)}
                       className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold transition ${
                         isJoined
-                          ? "border border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
+                          ? "border border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 cursor-default"
                           : isPending
-                          ? "border border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400"
-                          : "bg-brand-600 text-white hover:bg-brand-700 shadow-2xs"
+                          ? "border border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400 cursor-default"
+                          : joiningId === com.id
+                          ? "border border-brand-300 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 opacity-75 cursor-wait"
+                          : "bg-brand-600 text-white hover:bg-brand-700 shadow-2xs active:scale-95"
                       }`}
                     >
                       {isJoined ? (
@@ -485,6 +516,11 @@ export default function CommunitiesPage() {
                         <>
                           <span className="flex size-2 rounded-full bg-amber-500 animate-pulse" />
                           <span>En attente</span>
+                        </>
+                      ) : joiningId === com.id ? (
+                        <>
+                          <span className="size-3.5 animate-spin rounded-full border-2 border-brand-600 dark:border-brand-400 border-t-transparent" />
+                          <span>Envoi...</span>
                         </>
                       ) : (
                         <>
@@ -865,6 +901,7 @@ export default function CommunitiesPage() {
         communityId={selectedCommunityId}
         onClose={() => setSelectedCommunityId(null)}
         isJoined={selectedCommunityId ? joinedCommunityIds.includes(selectedCommunityId) : false}
+        isPending={selectedCommunityId ? pendingCommunityIds.includes(selectedCommunityId) : false}
         membershipStatus={
           selectedCommunityId
             ? joinedCommunityIds.includes(selectedCommunityId)

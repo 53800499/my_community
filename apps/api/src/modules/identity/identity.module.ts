@@ -14,6 +14,7 @@ import { LoginUseCase } from './application/commands/login.use-case.js';
 import { ValidateSessionQuery } from './application/queries/validate-session.query.js';
 import { AuthController } from './presentation/http/controllers/auth.controller.js';
 import { JwtAuthGuard } from './presentation/http/guards/jwt-auth.guard.js';
+import { PlatformAdminGuard } from './presentation/http/guards/platform-admin.guard.js';
 
 @Global()
 @Module({
@@ -43,6 +44,7 @@ import { JwtAuthGuard } from './presentation/http/guards/jwt-auth.guard.js';
     LoginUseCase,
     ValidateSessionQuery,
     JwtAuthGuard,
+    PlatformAdminGuard,
   ],
   exports: [
     IDENTITY_READER_PORT,
@@ -50,6 +52,7 @@ import { JwtAuthGuard } from './presentation/http/guards/jwt-auth.guard.js';
     TOKEN_SERVICE_PORT,
     ValidateSessionQuery,
     JwtAuthGuard,
+    PlatformAdminGuard,
   ],
 })
 export class IdentityModule {}

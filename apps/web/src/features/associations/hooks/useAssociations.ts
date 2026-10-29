@@ -65,6 +65,19 @@ export function useAssociations(initialAssocId?: string) {
     );
   }, []);
 
+  const deleteAssociation = useCallback(async (associationId: string, confirmationName?: string) => {
+    setIsLoading(true);
+    try {
+      await associationApiService.deleteAssociation(associationId, confirmationName);
+      setAssociations((prev) => prev.filter((a) => a.id !== associationId));
+      if (selectedAssocId === associationId) {
+        setSelectedAssocId('');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedAssocId]);
+
   const selectedAssociation = associations.find((a) => a.id === selectedAssocId) || associations[0];
 
   return {
@@ -77,5 +90,6 @@ export function useAssociations(initialAssocId?: string) {
     refresh: fetchAssociations,
     registerAssociation,
     linkCommunity,
+    deleteAssociation,
   };
 }

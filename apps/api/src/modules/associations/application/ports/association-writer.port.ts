@@ -18,6 +18,7 @@ export abstract class AssociationWriterPort {
   abstract removeMember(associationId: string, userId: string): Promise<void>;
   abstract linkCommunity(link: AssociationCommunityLinkEntity): Promise<void>;
   abstract unlinkCommunity(associationId: string, communityId: string): Promise<void>;
+  abstract delete(associationId: string): Promise<void>;
 }
 
 export const ASSOCIATION_WRITER_PORT = Symbol('ASSOCIATION_WRITER_PORT');

@@ -192,3 +192,59 @@ body {
   color: #9ca3af;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Extra-ordinary UI Keyframe Animations                                     */
+/* -------------------------------------------------------------------------- */
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 32s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+@keyframes aurora-drift {
+  0% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate(25px, -35px) scale(1.06) rotate(2deg);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.96) rotate(-2deg);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
+}
+
+.animate-aurora-drift {
+  animation: aurora-drift 16s ease-in-out infinite alternate;
+}
+
+@keyframes beam-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-beam-rotate {
+  animation: beam-rotate 6s linear infinite;
+}
+
+

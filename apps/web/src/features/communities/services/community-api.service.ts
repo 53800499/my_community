@@ -12,51 +12,6 @@ import {
   ApiMembership,
 } from "../types/community.types";
 
-export const DEFAULT_COMMUNITIES: ApiCommunity[] = [
-  {
-    id: "4f79ff2c-c965-4af7-a99e-de4e4bf457dc",
-    name: "Habitants de Zogbadjè (Abomey-Calavi)",
-    slug: "habitants-de-zogbadje",
-    description: "Espace citoyen de concertation, salubrité et solidarité des résidents de Zogbadjè et du campus.",
-    type: "TERRITORIAL",
-    territoryId: "territory-calavi",
-    territoryName: "Abomey-Calavi",
-    membersCount: 142,
-    status: "ACTIVE",
-  },
-  {
-    id: "02554230-fa9f-4494-acc0-1f0652e217a9",
-    name: "Campus Universitaire Tankpè (UAC)",
-    slug: "campus-universitaire-tankpe",
-    description: "Communauté de vie étudiante, entraide académique et gestion des résidences universitaires.",
-    type: "TERRITORIAL",
-    territoryId: "territory-calavi",
-    territoryName: "Abomey-Calavi",
-    membersCount: 88,
-    status: "ACTIVE",
-  },
-  {
-    id: "62cd05e4-f423-4055-acb8-58af601405d0",
-    name: "Godomey Centre & Environs",
-    slug: "godomey-centre",
-    description: "Rassemblement des familles, commerçants et jeunes de Godomey pour le développement local.",
-    type: "TERRITORIAL",
-    territoryId: "territory-godomey",
-    territoryName: "Godomey",
-    membersCount: 65,
-    status: "ACTIVE",
-  },
-  {
-    id: "99de87bc-1e47-4f92-a128-444455556666",
-    name: "Développeurs & Innovateurs du Bénin",
-    slug: "developpeurs-benin",
-    description: "Communauté thématique tech, partage de projets open-source, hackathons et opportunités numériques.",
-    type: "THEMATIC",
-    membersCount: 210,
-    status: "ACTIVE",
-  },
-];
-
 export const communityApiService = {
   async list(): Promise<ApiCommunity[]> {
     try {
@@ -74,12 +29,7 @@ export const communityApiService = {
     } catch (err) {
       console.warn("API /communities unreachable, fallback to storage:", err);
     }
-    const stored = getLocalState<ApiCommunity[]>(STORAGE_KEYS.COMMUNITIES, []);
-    if (stored.length === 0) {
-      setLocalState(STORAGE_KEYS.COMMUNITIES, DEFAULT_COMMUNITIES);
-      return DEFAULT_COMMUNITIES;
-    }
-    return stored;
+    return getLocalState<ApiCommunity[]>(STORAGE_KEYS.COMMUNITIES, []);
   },
 
   async getById(id: string): Promise<ApiCommunity> {
@@ -177,17 +127,24 @@ export const communityApiService = {
       });
       setLocalState(STORAGE_KEYS.MEMBERSHIPS, [res, ...memberships.filter((m) => m.id !== res.id && m.communityId !== res.communityId)]);
       return res;
-    } catch (err) {
+    } catch (err: unknown) {
       console.warn("API requestMembership fallback to local resilient state:", err);
+      const errMsg = String((err as { message?: string; detail?: string })?.message || (err as { detail?: string })?.detail || "");
+      const isPendingConflict = errMsg.includes("en attente");
       const existing = memberships.find((m) => m.communityId === communityId && (!currentUser?.id || m.userId === currentUser.id));
       if (existing) {
+        if (isPendingConflict && existing.status !== "PENDING") {
+          const updatedExisting: ApiMembership = { ...existing, status: "PENDING" };
+          setLocalState(STORAGE_KEYS.MEMBERSHIPS, [updatedExisting, ...memberships.filter((m) => m.id !== existing.id)]);
+          return updatedExisting;
+        }
         return existing;
       }
       const newMembership: ApiMembership = {
         id: generateUuid(),
         communityId,
         userId: currentUser?.id || "demo-citizen-id",
-        status: "ACTIVE",
+        status: "PENDING",
         joinedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         roles: ["MEMBER"],
@@ -283,5 +240,30 @@ export const communityApiService = {
     }
     const stored = getLocalState<ApiMembership[]>(STORAGE_KEYS.MEMBERSHIPS, []);
     return stored.filter((m) => !currentUser?.id || m.userId === currentUser.id || m.userId === "demo-citizen-id" || !m.userId);
+  },
+
+  /**
+   * Dissoudre et supprimer un espace communautaire
+   */
+  async deleteCommunity(id: string, confirmationName?: string): Promise<{ success: boolean; communityId: string }> {
+    try {
+      const query = confirmationName ? `?confirmationName=${encodeURIComponent(confirmationName)}` : '';
+      await apiClient.fetch(`communities/${id}${query}`, {
+        method: "DELETE",
+      });
+    } catch (err) {
+      console.warn("API DELETE communities/:id fallback to local state removal:", err);
+    }
+
+    // Supprimer des données locales
+    const comms = getLocalState<ApiCommunity[]>(STORAGE_KEYS.COMMUNITIES, []);
+    const updated = comms.filter((c) => c.id !== id);
+    setLocalState(STORAGE_KEYS.COMMUNITIES, updated);
+
+    // Supprimer les adhésions associées
+    const mems = getLocalState<ApiMembership[]>(STORAGE_KEYS.MEMBERSHIPS, []);
+    setLocalState(STORAGE_KEYS.MEMBERSHIPS, mems.filter((m) => m.communityId !== id));
+
+    return { success: true, communityId: id };
   },
 };

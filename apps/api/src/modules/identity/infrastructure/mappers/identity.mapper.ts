@@ -16,13 +16,42 @@ export { UserAccountResponseDto, AuthSuccessResponseDto };
  * Isole totalement le domaine pur des structures de données de la base de données.
  */
 export class IdentityMapper {
-  public static toDomain(raw: PrismaUserAccount): UserAccountEntity {
+  public static isPlatformAdminUser(raw: {
+    phoneNumber: string;
+    email?: string | null;
+    isPlatformAdmin?: boolean;
+  }): boolean {
+    if (typeof raw.isPlatformAdmin === 'boolean') {
+      return raw.isPlatformAdmin;
+    }
+    const phone = (raw.phoneNumber || '').trim();
+    const email = (raw.email || '').toLowerCase().trim();
+    const adminPhones = (process.env.PLATFORM_ADMIN_PHONES || '+22997123456')
+      .split(',')
+      .map((p) => p.trim());
+    const adminEmails = (
+      process.env.PLATFORM_ADMIN_EMAILS ||
+      'sikirou@mycommunity.bj,admin@mycommunity.bj'
+    )
+      .split(',')
+      .map((e) => e.trim().toLowerCase());
+    return (
+      adminPhones.includes(phone) ||
+      (email.length > 0 && adminEmails.includes(email))
+    );
+  }
+
+  public static toDomain(
+    raw: PrismaUserAccount & { isPlatformAdmin?: boolean },
+  ): UserAccountEntity {
+    const isPlatformAdmin = IdentityMapper.isPlatformAdminUser(raw);
     return UserAccountEntity.create({
       id: raw.id,
       email: raw.email ? new Email(raw.email) : null,
       phoneNumber: new PhoneNumber(raw.phoneNumber),
       passwordHash: new PasswordHash(raw.passwordHash),
       status: raw.status as unknown as AccountStatus,
+      isPlatformAdmin,
       createdAt: raw.createdAt,
       updatedAt: raw.updatedAt,
     });
@@ -34,6 +63,8 @@ export class IdentityMapper {
       phoneNumber: entity.phoneNumber.getValue(),
       email: entity.email ? entity.email.getValue() : null,
       status: entity.status,
+      isPlatformAdmin: entity.isPlatformAdmin,
+      role: entity.isPlatformAdmin ? 'SUPER_ADMIN' : 'CITIZEN',
       createdAt: entity.createdAt.toISOString(),
       updatedAt: entity.updatedAt.toISOString(),
     };

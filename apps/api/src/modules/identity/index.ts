@@ -20,4 +20,5 @@ export * from './application/queries/validate-session.query.js';
 
 // Presentation
 export * from './presentation/http/guards/jwt-auth.guard.js';
+export * from './presentation/http/guards/platform-admin.guard.js';
 export * from './presentation/http/decorators/current-user.decorator.js';

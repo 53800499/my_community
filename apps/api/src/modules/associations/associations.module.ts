@@ -4,6 +4,7 @@ import { CommunitiesModule } from '../communities/communities.module.js';
 import { AuditModule } from '../audit/audit.module.js';
 import { AssociationsController } from './presentation/http/controllers/associations.controller.js';
 import { RegisterAssociationUseCase } from './application/commands/register-association.use-case.js';
+import { DeleteAssociationUseCase } from './application/commands/delete-association.use-case.js';
 import { LinkCommunityUseCase } from './application/commands/link-community.use-case.js';
 import { ManageAssociationMemberUseCase } from './application/commands/manage-association-member.use-case.js';
 import { CreateAssociationPositionUseCase } from './application/commands/create-association-position.use-case.js';
@@ -69,6 +70,7 @@ import { PrismaAssociationMandateRepository } from './infrastructure/persistence
       useExisting: PrismaAssociationMandateRepository,
     },
     RegisterAssociationUseCase,
+    DeleteAssociationUseCase,
     LinkCommunityUseCase,
     ManageAssociationMemberUseCase,
     CreateAssociationPositionUseCase,
@@ -94,6 +96,7 @@ import { PrismaAssociationMandateRepository } from './infrastructure/persistence
     ASSOCIATION_MANDATE_READER_PORT,
     ASSOCIATION_MANDATE_WRITER_PORT,
     RegisterAssociationUseCase,
+    DeleteAssociationUseCase,
     LinkCommunityUseCase,
     ManageAssociationMemberUseCase,
     CreateAssociationPositionUseCase,

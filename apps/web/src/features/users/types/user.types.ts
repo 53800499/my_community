@@ -3,4 +3,6 @@ export interface ApiUserSummary {
   name: string;
   phone: string;
   email?: string;
+  city?: string;
+  avatarKey?: string | null;
 }

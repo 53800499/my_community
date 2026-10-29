@@ -16,6 +16,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../../identity/presentation/http/guards/jwt-auth.guard.js';
+import { PlatformAdminGuard } from '../../../../identity/presentation/http/guards/platform-admin.guard.js';
 import { CurrentUser } from '../../../../identity/presentation/http/decorators/current-user.decorator.js';
 import { UserAccountEntity } from '../../../../identity/domain/entities/user-account.entity.js';
 import { SubmitProposalUseCase } from '../../../application/commands/submit-proposal.use-case.js';
@@ -99,15 +100,20 @@ export class CommunityProposalsController {
   }
 
   @Get('admin/community-proposals')
+  @UseGuards(PlatformAdminGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Propositions en attente d’instruction (Administration)',
-    description: 'Consulte la liste des propositions citoyennes nécessitant une revue administrative.',
+    description: 'Consulte la liste des propositions citoyennes nécessitant une revue administrative. Réservé aux administrateurs de la plateforme.',
   })
   @ApiResponse({
     status: 200,
     description: 'Liste des propositions administratives.',
     type: [CommunityProposalResponseDto],
+  })
+  @ApiResponse({
+    status: 403,
+    description: "Accès restreint à l'Administration Générale de la Plateforme.",
   })
   async listAdminProposals(): Promise<CommunityProposalResponseDto[]> {
     const proposals = await this.listProposalsQuery.execute({
@@ -118,6 +124,7 @@ export class CommunityProposalsController {
   }
 
   @Post('admin/community-proposals/:id/review')
+  @UseGuards(PlatformAdminGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Instruire une proposition citoyenne (Administration)',

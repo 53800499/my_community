@@ -153,18 +153,6 @@ export default function AssociationGovernancePage() {
   const [isGeneratingMandatePdf, setIsGeneratingMandatePdf] = useState(false);
   const [selectedAuditActionDetails, setSelectedAuditActionDetails] = useState<ApiMandateAuditAction | null>(null);
 
-  if (!isExecutive) {
-    return (
-      <AccessRestricted
-        title="Règles de Gouvernance & Mandats Exécutifs Confidentiels"
-        description="Les règles internes de gouvernance, délégations de signature, mandats électifs des dirigeants et indemnités de fonction constituent des secrets associatifs réservés au bureau exécutif et aux autorités de tutelle."
-        requiredRole="Président(e), Secrétaire Général(e) ou Bureau Exécutif"
-        backHref="/dashboard/associations"
-        backLabel="Retour à l'annuaire des associations"
-      />
-    );
-  }
-
   // Simulation de rôle actif (contrôle d'accès)
   const [currentRoleSimulation, setCurrentRoleSimulation] = useState<UserRoleSimulation>(ROLE_SIMULATIONS[0]);
 
@@ -778,6 +766,18 @@ export default function AssociationGovernancePage() {
   // KPIs Contrats
   const activeContractsCount = contracts.filter((c) => c.status === 'ACTIVE').length;
   const pendingContractsCount = contracts.filter((c) => c.status === 'PENDING_SIGNATURE').length;
+
+  if (!isExecutive) {
+    return (
+      <AccessRestricted
+        title="Règles de Gouvernance & Mandats Exécutifs Confidentiels"
+        description="Les règles internes de gouvernance, délégations de signature, mandats électifs des dirigeants et indemnités de fonction constituent des secrets associatifs réservés au bureau exécutif et aux autorités de tutelle."
+        requiredRole="Président(e), Secrétaire Général(e) ou Bureau Exécutif"
+        backHref="/dashboard/associations"
+        backLabel="Retour à l'annuaire des associations"
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 pb-12">

@@ -28,6 +28,11 @@ import {
   MapPin,
   CreditCard,
   Users,
+  UserCheck,
+  UserPlus,
+  ShieldAlert,
+  CheckCircle2,
+  Info,
 } from 'lucide-react';
 import { Select2 } from '@/components/ui/Select2';
 import {
@@ -38,6 +43,7 @@ import {
   AssociationCategory,
   associationApiService,
 } from '@/features/associations';
+import { userApiService, ApiUserSummary } from '@/features/users';
 import { StudentOpportunityRelanceModal } from '@/components/dashboard/StudentOpportunityRelanceModal';
 
 const BENIN_INSTITUTIONS = [
@@ -151,6 +157,17 @@ export default function AssociationMembersPage() {
     setExpandedAssocs((prev) => ({ ...prev, [assocId]: !prev[assocId] }));
   };
 
+  // Platform citizens pool & registration flow
+  const [platformUsers, setPlatformUsers] = useState<ApiUserSummary[]>([]);
+  const [selectedCitizenId, setSelectedCitizenId] = useState<string>('');
+  const [addMode, setAddMode] = useState<'EXISTING_CITIZEN' | 'INVITE_NEW'>('EXISTING_CITIZEN');
+  const [newCitizenCity, setNewCitizenCity] = useState<string>('Abomey-Calavi');
+
+  // Chargement des citoyens enregistrés sur la plateforme
+  useEffect(() => {
+    userApiService.list().then(setPlatformUsers).catch(() => { });
+  }, []);
+
   // New member form
   const [userName, setUserName] = useState('');
   const [userPhone, setUserPhone] = useState('');
@@ -162,8 +179,8 @@ export default function AssociationMembersPage() {
   const [studentIdNumber, setStudentIdNumber] = useState('');
   const [institutionName, setInstitutionName] = useState(
     selectedAssociation?.educationalInstitution ||
-      selectedAssociation?.universityCampus ||
-      BENIN_INSTITUTIONS[0],
+    selectedAssociation?.universityCampus ||
+    BENIN_INSTITUTIONS[0],
   );
   const [customInstitution, setCustomInstitution] = useState('');
   const [faculty, setFaculty] = useState('');
@@ -324,20 +341,70 @@ export default function AssociationMembersPage() {
   const handleOpenAddModal = () => {
     // Si l'association est éducative, cocher automatiquement le profil étudiant
     setIsStudentMember(isEducational);
+    setSelectedCitizenId('');
+    setAddMode('EXISTING_CITIZEN');
+    setUserName('');
+    setUserPhone('');
+    setUserEmail('');
+    userApiService.list().then(setPlatformUsers).catch(() => { });
     setIsAddModalOpen(true);
   };
+
+  const handleSelectCitizen = (citizenId: string) => {
+    setSelectedCitizenId(citizenId);
+    const found = platformUsers.find((u) => u.id === citizenId);
+    if (found) {
+      setUserName(found.name);
+      setUserPhone(found.phone);
+      setUserEmail(found.email || '');
+    } else {
+      setUserName('');
+      setUserPhone('');
+      setUserEmail('');
+    }
+  };
+
+  const isCitizenAlreadyMember = Boolean(
+    selectedCitizenId &&
+    members.some(
+      (m) =>
+        (m.userId && m.userId === selectedCitizenId) ||
+        m.id === selectedCitizenId ||
+        (userPhone && m.userPhone && m.userPhone.replace(/\s+/g, '') === userPhone.replace(/\s+/g, '')),
+    ),
+  );
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userName.trim()) return;
 
+    if (addMode === 'EXISTING_CITIZEN' && isCitizenAlreadyMember) {
+      showToast('Ce citoyen est déjà membre adhérent de l’association.');
+      return;
+    }
+
     try {
+      let finalUserId = selectedCitizenId;
+
+      // Si mode création d'un citoyen non encore répertorié : on l'enregistre d'abord sur la plateforme !
+      if (addMode === 'INVITE_NEW' || !finalUserId) {
+        const createdCitizen = await userApiService.registerCitizen({
+          name: userName.trim(),
+          phone: userPhone.trim(),
+          email: userEmail.trim() || undefined,
+          city: newCitizenCity.trim() || undefined,
+        });
+        finalUserId = createdCitizen.id;
+        setPlatformUsers((prev) => [createdCitizen, ...prev]);
+      }
+
       const finalInstitution =
         institutionName === 'Autre Établissement (Saisie Libre)'
           ? customInstitution.trim() || undefined
           : institutionName;
 
       const created = await addMember({
+        userId: finalUserId,
         userName: userName.trim(),
         userPhone: userPhone.trim() || undefined,
         userEmail: userEmail.trim() || undefined,
@@ -345,31 +412,32 @@ export default function AssociationMembersPage() {
         isStudent: isStudentMember,
         studentInfo: isStudentMember
           ? {
-              studentIdNumber:
-                studentIdNumber.trim() ||
-                `ETU-${Math.floor(10000000 + Math.random() * 90000000)}`,
-              institutionName: finalInstitution,
-              university: finalInstitution,
-              faculty: faculty.trim() || undefined,
-              fieldOfStudy: fieldOfStudy.trim() || undefined,
-              studyLevel,
-              academicYear: '2025-2026',
-              opportunityInterests: selectedInterests,
-            }
+            studentIdNumber:
+              studentIdNumber.trim() ||
+              `ETU-${Math.floor(10000000 + Math.random() * 90000000)}`,
+            institutionName: finalInstitution,
+            university: finalInstitution,
+            faculty: faculty.trim() || undefined,
+            fieldOfStudy: fieldOfStudy.trim() || undefined,
+            studyLevel,
+            academicYear: '2025-2026',
+            opportunityInterests: selectedInterests,
+          }
           : undefined,
         professionalInfo:
           isProfessionalOrEducational && hasProfInfoInAdd && addProfJobTitle.trim()
             ? {
-                currentJobTitle: addProfJobTitle.trim(),
-                company: addProfCompany.trim() || undefined,
-                companyOrOrganization: addProfCompany.trim() || undefined,
-                industrySector: addProfSector.trim() || undefined,
-                highestDegree: addProfDegree.trim() || undefined,
-              }
+              currentJobTitle: addProfJobTitle.trim(),
+              company: addProfCompany.trim() || undefined,
+              companyOrOrganization: addProfCompany.trim() || undefined,
+              industrySector: addProfSector.trim() || undefined,
+              highestDegree: addProfDegree.trim() || undefined,
+            }
             : undefined,
       });
 
       setIsAddModalOpen(false);
+      setSelectedCitizenId('');
       setUserName('');
       setUserPhone('');
       setUserEmail('');
@@ -383,7 +451,7 @@ export default function AssociationMembersPage() {
       setAddProfSector('');
       setAddProfDegree('');
       showToast(
-        `Adhérent « ${created.userName} » inscrit avec succès (Matricule: ${created.membershipCardNumber}) !`,
+        `Adhérent « ${created.userName} » affilié avec succès (Matricule: ${created.membershipCardNumber}) !`,
       );
     } catch {
       showToast('Erreur lors de l’inscription de l’adhérent.');
@@ -513,11 +581,10 @@ export default function AssociationMembersPage() {
           <button
             type="button"
             onClick={() => setMembersViewMode('ACTIVE_ASSOC')}
-            className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
-              membersViewMode === 'ACTIVE_ASSOC'
+            className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition ${membersViewMode === 'ACTIVE_ASSOC'
                 ? 'bg-brand-600 text-white shadow-xs'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-            }`}
+              }`}
           >
             <UsersIcon className="size-4" />
             <span>Association Active ({selectedAssociation?.name || 'Sélection'})</span>
@@ -526,11 +593,10 @@ export default function AssociationMembersPage() {
           <button
             type="button"
             onClick={() => setMembersViewMode('MULTI_ASSOC_DIRECTORY')}
-            className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
-              membersViewMode === 'MULTI_ASSOC_DIRECTORY'
+            className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition ${membersViewMode === 'MULTI_ASSOC_DIRECTORY'
                 ? 'bg-brand-600 text-white shadow-xs'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-            }`}
+              }`}
           >
             <Layers className="size-4" />
             <span>Annuaire Consolidé : Membres de Chaque Association ({associations.length})</span>
@@ -596,11 +662,10 @@ export default function AssociationMembersPage() {
               return (
                 <div
                   key={assoc.id}
-                  className={`rounded-3xl border shadow-xs overflow-hidden transition ${
-                    isThisActive
+                  className={`rounded-3xl border shadow-xs overflow-hidden transition ${isThisActive
                       ? 'border-brand-300 bg-white dark:border-brand-900/60 dark:bg-gray-900'
                       : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900'
-                  }`}
+                    }`}
                 >
                   {/* Association Header Card */}
                   <div className="p-4 sm:p-5 border-b border-gray-100 dark:border-gray-800/80 bg-gradient-to-r from-gray-50/80 via-white to-gray-50/40 dark:from-gray-800/40 dark:via-gray-900 dark:to-gray-800/20">
@@ -677,7 +742,7 @@ export default function AssociationMembersPage() {
                             title="Inscrire un nouvel adhérent dans cette association"
                           >
                             <PlusIcon className="size-3.5" />
-                            <span>+ Membre</span>
+                            <span>Membre</span>
                           </button>
                           <button
                             type="button"
@@ -802,13 +867,12 @@ export default function AssociationMembersPage() {
                                   {/* Cotisations */}
                                   <td className="px-4 py-3">
                                     <span
-                                      className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                                        m.duesStatus === 'UP_TO_DATE'
+                                      className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${m.duesStatus === 'UP_TO_DATE'
                                           ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
                                           : m.duesStatus === 'LATE'
                                             ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
                                             : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                                      }`}
+                                        }`}
                                     >
                                       {m.duesStatus === 'UP_TO_DATE'
                                         ? 'À jour'
@@ -912,436 +976,431 @@ export default function AssociationMembersPage() {
                     disabled={isLoadingAssocs}
                     className="w-full"
                   >
-                {associations.map((a) => {
-                  const catLabel =
-                    a.category === 'EDUCATIONAL'
-                      ? 'Éducative'
-                      : a.category === 'PROFESSIONAL'
-                        ? 'Professionnelle'
-                        : a.category === 'SPORT'
-                          ? 'Sport'
-                          : a.category === 'CULTURAL'
-                            ? 'Culture'
-                            : 'Citoyenne';
-                  return (
-                    <option key={a.id} value={a.id}>
-                      {a.name} ({a.acronym || 'ASSO'}) — {catLabel}
-                    </option>
-                  );
-                })}
-              </Select2>
+                    {associations.map((a) => {
+                      const catLabel =
+                        a.category === 'EDUCATIONAL'
+                          ? 'Éducative'
+                          : a.category === 'PROFESSIONAL'
+                            ? 'Professionnelle'
+                            : a.category === 'SPORT'
+                              ? 'Sport'
+                              : a.category === 'CULTURAL'
+                                ? 'Culture'
+                                : 'Citoyenne';
+                      return (
+                        <option key={a.id} value={a.id}>
+                          {a.name} ({a.acronym || 'ASSO'}) — {catLabel}
+                        </option>
+                      );
+                    })}
+                  </Select2>
+                </div>
+
+                {/* Badge de typologie dynamique */}
+                <div className="shrink-0">{renderCategoryBadge(category)}</div>
+              </div>
+
+              <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                {(selectedAssociation?.educationalInstitution ||
+                  selectedAssociation?.universityCampus) && (
+                    <div className="flex items-center gap-1.5 font-medium text-brand-600 dark:text-brand-400">
+                      <School className="size-4" />
+                      <span>
+                        {selectedAssociation.educationalInstitution ||
+                          selectedAssociation.universityCampus}
+                      </span>
+                    </div>
+                  )}
+                <div>
+                  Cotisation mensuelle :{' '}
+                  <strong className="text-gray-900 dark:text-white">
+                    {selectedAssociation?.monthlyDuesXOF || 1000} FCFA
+                  </strong>
+                </div>
+              </div>
             </div>
 
-            {/* Badge de typologie dynamique */}
-            <div className="shrink-0">{renderCategoryBadge(category)}</div>
-          </div>
-
-          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-            {(selectedAssociation?.educationalInstitution ||
-              selectedAssociation?.universityCampus) && (
-              <div className="flex items-center gap-1.5 font-medium text-brand-600 dark:text-brand-400">
-                <School className="size-4" />
-                <span>
-                  {selectedAssociation.educationalInstitution ||
-                    selectedAssociation.universityCampus}
-                </span>
+            {/* Bannière explicative conditionnelle si association éducative */}
+            {isEducational && (
+              <div className="mt-3.5 flex items-start gap-3 rounded-xl bg-linear-to-r from-indigo-50/80 to-purple-50/80 p-3 text-xs text-indigo-900 dark:from-indigo-950/30 dark:to-purple-950/30 dark:text-indigo-200 border border-indigo-100 dark:border-indigo-900/40">
+                <GraduationCap className="size-5 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
+                <div>
+                  <p className="font-bold">Espace de Gestion des Apprenants &amp; Étudiants</p>
+                  <p className="mt-0.5 text-[11px] text-indigo-800/80 dark:text-indigo-300/80">
+                    Cette association est identifiée comme un cadre éducatif. Les profils des membres
+                    peuvent être rattachés à n’importe quel établissement béninois ou international
+                    (universités publiques, grandes écoles privées, lycées techniques ou centres de
+                    formation) pour faciliter les relances d’opportunités ciblées.
+                  </p>
+                </div>
               </div>
             )}
-            <div>
-              Cotisation mensuelle :{' '}
-              <strong className="text-gray-900 dark:text-white">
-                {selectedAssociation?.monthlyDuesXOF || 1000} FCFA
-              </strong>
-            </div>
-          </div>
-        </div>
 
-        {/* Bannière explicative conditionnelle si association éducative */}
-        {isEducational && (
-          <div className="mt-3.5 flex items-start gap-3 rounded-xl bg-linear-to-r from-indigo-50/80 to-purple-50/80 p-3 text-xs text-indigo-900 dark:from-indigo-950/30 dark:to-purple-950/30 dark:text-indigo-200 border border-indigo-100 dark:border-indigo-900/40">
-            <GraduationCap className="size-5 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
-            <div>
-              <p className="font-bold">Espace de Gestion des Apprenants &amp; Étudiants</p>
-              <p className="mt-0.5 text-[11px] text-indigo-800/80 dark:text-indigo-300/80">
-                Cette association est identifiée comme un cadre éducatif. Les profils des membres
-                peuvent être rattachés à n’importe quel établissement béninois ou international
-                (universités publiques, grandes écoles privées, lycées techniques ou centres de
-                formation) pour faciliter les relances d’opportunités ciblées.
+            {/* Bannière explicative conditionnelle si association professionnelle */}
+            {isProfessional && (
+              <div className="mt-3.5 flex items-start gap-3 rounded-xl bg-linear-to-r from-amber-50/80 to-orange-50/80 p-3 text-xs text-amber-900 dark:from-amber-950/30 dark:to-orange-950/30 dark:text-amber-200 border border-amber-200 dark:border-amber-900/40">
+                <Briefcase className="size-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <div>
+                  <p className="font-bold">Groupement Professionnel &amp; Réseau de Compétences</p>
+                  <p className="mt-0.5 text-[11px] text-amber-800/80 dark:text-amber-300/80">
+                    Cette association est identifiée comme un cadre professionnel. Chaque adhérent peut
+                    renseigner son poste, son entreprise, son secteur d'activité, ses compétences et
+                    se rendre disponible pour le mentorat professionnel des autres membres.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* KPIs Adhésions (4 cartes standard, ou 5 cartes si éducative) */}
+          <div
+            className={`grid grid-cols-2 gap-4 ${isEducational ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}
+          >
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+              <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                Total Adhérents Enregistrés
               </p>
+              <p className="mt-1 text-2xl font-black text-gray-900 dark:text-white">{stats.total}</p>
+              <p className="mt-1 text-[10px] text-gray-400">Cartes de membres émises</p>
             </div>
-          </div>
-        )}
 
-        {/* Bannière explicative conditionnelle si association professionnelle */}
-        {isProfessional && (
-          <div className="mt-3.5 flex items-start gap-3 rounded-xl bg-linear-to-r from-amber-50/80 to-orange-50/80 p-3 text-xs text-amber-900 dark:from-amber-950/30 dark:to-orange-950/30 dark:text-amber-200 border border-amber-200 dark:border-amber-900/40">
-            <Briefcase className="size-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-            <div>
-              <p className="font-bold">Groupement Professionnel &amp; Réseau de Compétences</p>
-              <p className="mt-0.5 text-[11px] text-amber-800/80 dark:text-amber-300/80">
-                Cette association est identifiée comme un cadre professionnel. Chaque adhérent peut
-                renseigner son poste, son entreprise, son secteur d'activité, ses compétences et
-                se rendre disponible pour le mentorat professionnel des autres membres.
+            {isEducational && (
+              <div className="rounded-2xl border border-indigo-200 bg-linear-to-br from-indigo-50 to-purple-50/50 p-4 shadow-xs dark:border-indigo-900 dark:bg-indigo-950/20">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400">
+                    Profils Apprenants
+                  </p>
+                  <GraduationCap className="size-4 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <p className="mt-1 text-2xl font-black text-indigo-900 dark:text-white">
+                  {stats.studentsCount}
+                </p>
+                <p className="mt-1 text-[10px] text-indigo-600/80 dark:text-indigo-300/80">
+                  Cursus &amp; filières renseignés
+                </p>
+              </div>
+            )}
+
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+              <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                Cotisations à Jour
               </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* KPIs Adhésions (4 cartes standard, ou 5 cartes si éducative) */}
-      <div
-        className={`grid grid-cols-2 gap-4 ${isEducational ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}
-      >
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-          <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
-            Total Adhérents Enregistrés
-          </p>
-          <p className="mt-1 text-2xl font-black text-gray-900 dark:text-white">{stats.total}</p>
-          <p className="mt-1 text-[10px] text-gray-400">Cartes de membres émises</p>
-        </div>
-
-        {isEducational && (
-          <div className="rounded-2xl border border-indigo-200 bg-linear-to-br from-indigo-50 to-purple-50/50 p-4 shadow-xs dark:border-indigo-900 dark:bg-indigo-950/20">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-bold text-indigo-700 dark:text-indigo-400">
-                Profils Apprenants
+              <p className="mt-1 text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                {stats.upToDate}
               </p>
-              <GraduationCap className="size-4 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <p className="mt-1 text-2xl font-black text-indigo-900 dark:text-white">
-              {stats.studentsCount}
-            </p>
-            <p className="mt-1 text-[10px] text-indigo-600/80 dark:text-indigo-300/80">
-              Cursus &amp; filières renseignés
-            </p>
-          </div>
-        )}
-
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-          <p className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-            Cotisations à Jour
-          </p>
-          <p className="mt-1 text-2xl font-black text-emerald-600 dark:text-emerald-400">
-            {stats.upToDate}
-          </p>
-          <p className="mt-1 text-[10px] text-emerald-500">Membres en règle</p>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-          <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
-            Cotisations en Attente
-          </p>
-          <p className="mt-1 text-2xl font-black text-amber-600 dark:text-amber-400">
-            {stats.pending}
-          </p>
-          <p className="mt-1 text-[10px] text-gray-400">Échéance fin de mois</p>
-        </div>
-
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-          <p className="text-[11px] font-medium text-red-600 dark:text-red-400">En Retard</p>
-          <p className="mt-1 text-2xl font-black text-red-600 dark:text-red-400">{stats.late}</p>
-          <p className="mt-1 text-[10px] text-red-400">Relance de trésorerie</p>
-        </div>
-      </div>
-
-      {/* Barre de Recherche et Filtres */}
-      <div className="space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative flex-1 max-w-sm">
-            <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={
-                isEducational
-                  ? 'Recherche par nom, matricule, école, filière...'
-                  : 'Rechercher par nom, matricule ou poste...'
-              }
-              className="w-full rounded-xl border border-gray-200 bg-white py-2 pr-4 pl-9 text-xs text-gray-900 focus:border-brand-500 dark:border-gray-800 dark:bg-gray-900 dark:text-white"
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setFilterDues('ALL')}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-                filterDues === 'ALL'
-                  ? 'bg-brand-600 text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300'
-              }`}
-            >
-              Tous ({members.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterDues('UP_TO_DATE')}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-                filterDues === 'UP_TO_DATE'
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300'
-              }`}
-            >
-              À jour ({stats.upToDate})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFilterDues('LATE')}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
-                filterDues === 'LATE'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300'
-              }`}
-            >
-              Retards ({stats.late})
-            </button>
-          </div>
-        </div>
-
-        {/* Filtres de cohortes uniquement si Association Éducative */}
-        {isEducational && (
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/70 p-3 text-xs dark:border-gray-800 dark:bg-gray-850/40">
-            <div className="flex items-center gap-1.5 font-bold text-gray-600 dark:text-gray-300">
-              <SlidersHorizontal className="size-3.5 text-indigo-600" />
-              <span>Cohortes d’Étude :</span>
+              <p className="mt-1 text-[10px] text-emerald-500">Membres en règle</p>
             </div>
 
-            {/* Filtre par Niveau d'études */}
-            <div className="flex flex-wrap items-center gap-1">
-              {['ALL', 'SECONDAIRE', 'L1', 'L2', 'L3', 'M1', 'M2', 'DOCTORAT'].map((lvl) => (
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+              <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                Cotisations en Attente
+              </p>
+              <p className="mt-1 text-2xl font-black text-amber-600 dark:text-amber-400">
+                {stats.pending}
+              </p>
+              <p className="mt-1 text-[10px] text-gray-400">Échéance fin de mois</p>
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+              <p className="text-[11px] font-medium text-red-600 dark:text-red-400">En Retard</p>
+              <p className="mt-1 text-2xl font-black text-red-600 dark:text-red-400">{stats.late}</p>
+              <p className="mt-1 text-[10px] text-red-400">Relance de trésorerie</p>
+            </div>
+          </div>
+
+          {/* Barre de Recherche et Filtres */}
+          <div className="space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative flex-1 max-w-sm">
+                <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={
+                    isEducational
+                      ? 'Recherche par nom, matricule, école, filière...'
+                      : 'Rechercher par nom, matricule ou poste...'
+                  }
+                  className="w-full rounded-xl border border-gray-200 bg-white py-2 pr-4 pl-9 text-xs text-gray-900 focus:border-brand-500 dark:border-gray-800 dark:bg-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
                 <button
-                  key={lvl}
                   type="button"
-                  onClick={() => setFilterStudyLevel(lvl)}
-                  className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition ${
-                    filterStudyLevel === lvl
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-white text-gray-600 hover:bg-gray-200/60 dark:bg-gray-800 dark:text-gray-300'
-                  }`}
+                  onClick={() => setFilterDues('ALL')}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${filterDues === 'ALL'
+                      ? 'bg-brand-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300'
+                    }`}
                 >
-                  {lvl === 'ALL' ? 'Tous Niveaux' : lvl}
+                  Tous ({members.length})
                 </button>
-              ))}
-            </div>
-
-            <div className="hidden h-4 w-px bg-gray-300 dark:bg-gray-700 sm:block" />
-
-            {/* Filtre par Établissement */}
-            <div className="flex items-center gap-1.5 w-full sm:w-auto">
-              <span className="text-[11px] text-gray-500 shrink-0">Pôle :</span>
-              <div className="w-full sm:w-auto sm:min-w-[160px]">
-                <Select2
-                  value={filterInstitution}
-                  onChange={(e) => setFilterInstitution(e.target.value)}
-                  className="w-full"
+                <button
+                  type="button"
+                  onClick={() => setFilterDues('UP_TO_DATE')}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${filterDues === 'UP_TO_DATE'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300'
+                    }`}
                 >
-                  <option value="ALL">Tous établissements</option>
-                  <option value="UAC">UAC</option>
-                  <option value="Parakou">UP (Parakou)</option>
-                  <option value="UNSTIM">UNSTIM</option>
-                  <option value="UNA">UNA</option>
-                  <option value="Pigier">Pigier Bénin</option>
-                  <option value="Epitech">Epitech Bénin</option>
-                  <option value="Lycée">Lycées &amp; Technique</option>
-                </Select2>
+                  À jour ({stats.upToDate})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilterDues('LATE')}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${filterDues === 'LATE'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300'
+                    }`}
+                >
+                  Retards ({stats.late})
+                </button>
               </div>
             </div>
-          </div>
-        )}
-      </div>
 
-      {/* Tableau des Membres */}
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-        {isLoadingMembers ? (
-          <div className="p-12 text-center text-xs text-gray-500">Chargement des membres...</div>
-        ) : filteredMembers.length === 0 ? (
-          <div className="p-12 text-center text-xs text-gray-500">
-            Aucun adhérent ne correspond aux critères sélectionnés.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-gray-200 bg-gray-50 text-[11px] font-bold text-gray-500 uppercase dark:border-gray-800 dark:bg-gray-850 dark:text-gray-400">
-                <tr>
-                  <th className="px-5 py-3.5">Adhérent &amp; Contact</th>
-                  <th className="px-5 py-3.5">Matricule Statutaire</th>
-                  <th className="px-5 py-3.5">
-                    {isEducational ? 'Rôle & Cursus' : 'Rôle / Titre Officiel'}
-                  </th>
-                  <th className="px-5 py-3.5">Date Adhésion</th>
-                  <th className="px-5 py-3.5">Cotisation XOF</th>
-                  <th className="px-5 py-3.5 text-right">Carte &amp; Relance</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {filteredMembers.map((m) => (
-                  <tr
-                    key={m.id}
-                    className="transition hover:bg-gray-50/50 dark:hover:bg-gray-800/40"
-                  >
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex size-9 shrink-0 items-center justify-center rounded-xl font-bold ${
-                            m.isStudent
-                              ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
-                              : 'bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300'
-                          }`}
-                        >
-                          {m.userName.slice(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-bold text-gray-900 dark:text-white">{m.userName}</p>
-                          <p className="text-[11px] text-gray-400">{m.userPhone || m.userEmail}</p>
+            {/* Filtres de cohortes uniquement si Association Éducative */}
+            {isEducational && (
+              <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/70 p-3 text-xs dark:border-gray-800 dark:bg-gray-850/40">
+                <div className="flex items-center gap-1.5 font-bold text-gray-600 dark:text-gray-300">
+                  <SlidersHorizontal className="size-3.5 text-indigo-600" />
+                  <span>Cohortes d’Étude :</span>
+                </div>
 
-                          {/* Badge de cursus étudiant/apprenant si renseigné */}
-                          {m.isStudent && m.studentInfo && (
-                            <div className="mt-1 flex flex-wrap items-center gap-1">
-                              <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
-                                <GraduationCap className="size-3" />
-                                <span>
-                                  {m.studentInfo.studyLevel ? `${m.studentInfo.studyLevel} — ` : ''}
-                                  {m.studentInfo.institutionName ||
-                                    m.studentInfo.university ||
-                                    'Apprenant'}
-                                </span>
-                              </span>
-                              {m.studentInfo.faculty && (
-                                <span className="text-[10px] text-gray-500 font-medium">
-                                  [{m.studentInfo.faculty}]
-                                </span>
+                {/* Filtre par Niveau d'études */}
+                <div className="flex flex-wrap items-center gap-1">
+                  {['ALL', 'SECONDAIRE', 'L1', 'L2', 'L3', 'M1', 'M2', 'DOCTORAT'].map((lvl) => (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => setFilterStudyLevel(lvl)}
+                      className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition ${filterStudyLevel === lvl
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-white text-gray-600 hover:bg-gray-200/60 dark:bg-gray-800 dark:text-gray-300'
+                        }`}
+                    >
+                      {lvl === 'ALL' ? 'Tous Niveaux' : lvl}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="hidden h-4 w-px bg-gray-300 dark:bg-gray-700 sm:block" />
+
+                {/* Filtre par Établissement */}
+                <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                  <span className="text-[11px] text-gray-500 shrink-0">Pôle :</span>
+                  <div className="w-full sm:w-auto sm:min-w-[160px]">
+                    <Select2
+                      value={filterInstitution}
+                      onChange={(e) => setFilterInstitution(e.target.value)}
+                      className="w-full"
+                    >
+                      <option value="ALL">Tous établissements</option>
+                      <option value="UAC">UAC</option>
+                      <option value="Parakou">UP (Parakou)</option>
+                      <option value="UNSTIM">UNSTIM</option>
+                      <option value="UNA">UNA</option>
+                      <option value="Pigier">Pigier Bénin</option>
+                      <option value="Epitech">Epitech Bénin</option>
+                      <option value="Lycée">Lycées &amp; Technique</option>
+                    </Select2>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Tableau des Membres */}
+          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            {isLoadingMembers ? (
+              <div className="p-12 text-center text-xs text-gray-500">Chargement des membres...</div>
+            ) : filteredMembers.length === 0 ? (
+              <div className="p-12 text-center text-xs text-gray-500">
+                Aucun adhérent ne correspond aux critères sélectionnés.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-gray-200 bg-gray-50 text-[11px] font-bold text-gray-500 uppercase dark:border-gray-800 dark:bg-gray-850 dark:text-gray-400">
+                    <tr>
+                      <th className="px-5 py-3.5">Adhérent &amp; Contact</th>
+                      <th className="px-5 py-3.5">Matricule Statutaire</th>
+                      <th className="px-5 py-3.5">
+                        {isEducational ? 'Rôle & Cursus' : 'Rôle / Titre Officiel'}
+                      </th>
+                      <th className="px-5 py-3.5">Date Adhésion</th>
+                      <th className="px-5 py-3.5">Cotisation XOF</th>
+                      <th className="px-5 py-3.5 text-right">Carte &amp; Relance</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {filteredMembers.map((m) => (
+                      <tr
+                        key={m.id}
+                        className="transition hover:bg-gray-50/50 dark:hover:bg-gray-800/40"
+                      >
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`flex size-9 shrink-0 items-center justify-center rounded-xl font-bold ${m.isStudent
+                                  ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+                                  : 'bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300'
+                                }`}
+                            >
+                              {m.userName.slice(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-900 dark:text-white">{m.userName}</p>
+                              <p className="text-[11px] text-gray-400">{m.userPhone || m.userEmail}</p>
+
+                              {/* Badge de cursus étudiant/apprenant si renseigné */}
+                              {m.isStudent && m.studentInfo && (
+                                <div className="mt-1 flex flex-wrap items-center gap-1">
+                                  <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                                    <GraduationCap className="size-3" />
+                                    <span>
+                                      {m.studentInfo.studyLevel ? `${m.studentInfo.studyLevel} — ` : ''}
+                                      {m.studentInfo.institutionName ||
+                                        m.studentInfo.university ||
+                                        'Apprenant'}
+                                    </span>
+                                  </span>
+                                  {m.studentInfo.faculty && (
+                                    <span className="text-[10px] text-gray-500 font-medium">
+                                      [{m.studentInfo.faculty}]
+                                    </span>
+                                  )}
+                                  {m.studentInfo.fieldOfStudy && (
+                                    <span className="text-[10px] text-gray-400 italic">
+                                      ({m.studentInfo.fieldOfStudy})
+                                    </span>
+                                  )}
+                                </div>
                               )}
-                              {m.studentInfo.fieldOfStudy && (
-                                <span className="text-[10px] text-gray-400 italic">
-                                  ({m.studentInfo.fieldOfStudy})
-                                </span>
+
+                              {/* Badge d'informations professionnelles si association Pro ou Éducative */}
+                              {isProfessionalOrEducational && m.professionalInfo?.currentJobTitle && (
+                                <div className="mt-1 flex flex-wrap items-center gap-1">
+                                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40">
+                                    <Briefcase className="size-3 text-amber-600 dark:text-amber-400" />
+                                    <span>
+                                      {m.professionalInfo.currentJobTitle}
+                                      {(m.professionalInfo.company || m.professionalInfo.companyOrOrganization)
+                                        ? ` @ ${m.professionalInfo.company || m.professionalInfo.companyOrOrganization}`
+                                        : ''}
+                                    </span>
+                                  </span>
+                                  {m.professionalInfo.isAvailableForMentoring && (
+                                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                      <GraduationCap className="size-3 text-emerald-600 dark:text-emerald-400" />
+                                      <span>Mentor</span>
+                                    </span>
+                                  )}
+                                </div>
                               )}
                             </div>
-                          )}
+                          </div>
+                        </td>
 
-                          {/* Badge d'informations professionnelles si association Pro ou Éducative */}
-                          {isProfessionalOrEducational && m.professionalInfo?.currentJobTitle && (
-                            <div className="mt-1 flex flex-wrap items-center gap-1">
-                              <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40">
+                        <td className="px-5 py-4">
+                          <p className="font-mono font-bold text-gray-800 dark:text-gray-200">
+                            {m.membershipCardNumber || 'BJ-ADH-000'}
+                          </p>
+                          {m.isStudent && m.studentInfo?.studentIdNumber && (
+                            <p className="text-[10px] font-mono font-semibold text-indigo-600 dark:text-indigo-400">
+                              Matricule : {m.studentInfo.studentIdNumber}
+                            </p>
+                          )}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          {m.positionTitle ? (
+                            <span className="font-bold text-brand-600 dark:text-brand-400">
+                              {m.positionTitle}
+                            </span>
+                          ) : (
+                            <Badge
+                              variant="light"
+                              color={m.roles.includes('PRESIDENT') ? 'primary' : 'light'}
+                              size="sm"
+                            >
+                              {m.roles[0]}
+                            </Badge>
+                          )}
+                        </td>
+
+                        <td className="px-5 py-4 text-gray-500 dark:text-gray-400">
+                          {new Date(m.joinedAt).toLocaleDateString('fr-FR', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          {m.duesStatus === 'UP_TO_DATE' ? (
+                            <Badge variant="light" color="success" size="sm">
+                              <span className="inline-flex items-center gap-1">
+                                <Check className="size-3" />
+                                <span>À jour</span>
+                              </span>
+                            </Badge>
+                          ) : m.duesStatus === 'LATE' ? (
+                            <Badge variant="light" color="error" size="sm">
+                              <span className="inline-flex items-center gap-1">
+                                <AlertTriangle className="size-3" />
+                                <span>En retard</span>
+                              </span>
+                            </Badge>
+                          ) : (
+                            <Badge variant="light" color="warning" size="sm">
+                              En attente
+                            </Badge>
+                          )}
+                        </td>
+
+                        <td className="px-5 py-4 text-right">
+                          <div className="inline-flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedMemberCard(m)}
+                              className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                            >
+                              Voir Carte
+                            </button>
+
+                            {isProfessionalOrEducational && (
+                              <button
+                                type="button"
+                                onClick={() => openProfessionalModal(m)}
+                                title="Renseigner ou éditer les informations professionnelles"
+                                className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300 transition"
+                              >
                                 <Briefcase className="size-3 text-amber-600 dark:text-amber-400" />
-                                <span>
-                                  {m.professionalInfo.currentJobTitle}
-                                  {(m.professionalInfo.company || m.professionalInfo.companyOrOrganization)
-                                    ? ` @ ${m.professionalInfo.company || m.professionalInfo.companyOrOrganization}`
-                                    : ''}
-                                </span>
-                              </span>
-                              {m.professionalInfo.isAvailableForMentoring && (
-                                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
-                                  <GraduationCap className="size-3 text-emerald-600 dark:text-emerald-400" />
-                                  <span>Mentor</span>
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
+                                <span>Profil Pro</span>
+                              </button>
+                            )}
 
-                    <td className="px-5 py-4">
-                      <p className="font-mono font-bold text-gray-800 dark:text-gray-200">
-                        {m.membershipCardNumber || 'BJ-ADH-000'}
-                      </p>
-                      {m.isStudent && m.studentInfo?.studentIdNumber && (
-                        <p className="text-[10px] font-mono font-semibold text-indigo-600 dark:text-indigo-400">
-                          Matricule : {m.studentInfo.studentIdNumber}
-                        </p>
-                      )}
-                    </td>
-
-                    <td className="px-5 py-4">
-                      {m.positionTitle ? (
-                        <span className="font-bold text-brand-600 dark:text-brand-400">
-                          {m.positionTitle}
-                        </span>
-                      ) : (
-                        <Badge
-                          variant="light"
-                          color={m.roles.includes('PRESIDENT') ? 'primary' : 'light'}
-                          size="sm"
-                        >
-                          {m.roles[0]}
-                        </Badge>
-                      )}
-                    </td>
-
-                    <td className="px-5 py-4 text-gray-500 dark:text-gray-400">
-                      {new Date(m.joinedAt).toLocaleDateString('fr-FR', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </td>
-
-                    <td className="px-5 py-4">
-                      {m.duesStatus === 'UP_TO_DATE' ? (
-                        <Badge variant="light" color="success" size="sm">
-                          <span className="inline-flex items-center gap-1">
-                            <Check className="size-3" />
-                            <span>À jour</span>
-                          </span>
-                        </Badge>
-                      ) : m.duesStatus === 'LATE' ? (
-                        <Badge variant="light" color="error" size="sm">
-                          <span className="inline-flex items-center gap-1">
-                            <AlertTriangle className="size-3" />
-                            <span>En retard</span>
-                          </span>
-                        </Badge>
-                      ) : (
-                        <Badge variant="light" color="warning" size="sm">
-                          En attente
-                        </Badge>
-                      )}
-                    </td>
-
-                    <td className="px-5 py-4 text-right">
-                      <div className="inline-flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedMemberCard(m)}
-                          className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                        >
-                          Voir Carte
-                        </button>
-
-                        {isProfessionalOrEducational && (
-                          <button
-                            type="button"
-                            onClick={() => openProfessionalModal(m)}
-                            title="Renseigner ou éditer les informations professionnelles"
-                            className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300 transition"
-                          >
-                            <Briefcase className="size-3 text-amber-600 dark:text-amber-400" />
-                            <span>Profil Pro</span>
-                          </button>
-                        )}
-
-                        {isEducational && m.isStudent && (
-                          <button
-                            type="button"
-                            onClick={() => setIsOpportunityModalOpen(true)}
-                            title="Diffuser une opportunité ciblée pour ce profil"
-                            className="rounded-lg bg-indigo-50 p-1 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300"
-                          >
-                            <Send className="size-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                            {isEducational && m.isStudent && (
+                              <button
+                                type="button"
+                                onClick={() => setIsOpportunityModalOpen(true)}
+                                title="Diffuser une opportunité ciblée pour ce profil"
+                                className="rounded-lg bg-indigo-50 p-1 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300"
+                              >
+                                <Send className="size-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        )}
-      </div>
         </>
       )}
 
@@ -1373,48 +1432,179 @@ export default function AssociationMembersPage() {
             </div>
 
             <form onSubmit={handleAddMember} className="mt-4 space-y-4">
-              {/* Informations Générales */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
-                  Nom &amp; Prénoms *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  placeholder="Ex: Paul Bio Guéra"
-                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-900 focus:border-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
-                />
-              </div>
+              {/* Sélecteur de Mode : Citoyen Déjà Inscrit vs Inviter Nouveau Citoyen */}
+              <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-1 dark:border-gray-800 dark:bg-gray-950/50">
+                <div className="grid grid-cols-2 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddMode('EXISTING_CITIZEN');
+                      if (selectedCitizenId) {
+                        handleSelectCitizen(selectedCitizenId);
+                      }
+                    }}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-3 text-xs font-semibold transition ${addMode === 'EXISTING_CITIZEN'
+                        ? 'bg-white text-brand-600 shadow-xs dark:bg-gray-800 dark:text-brand-400'
+                        : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                      }`}
+                  >
+                    <UserCheck className="size-3.5" />
+                    <span>Citoyen Inscrit</span>
+                  </button>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    Numéro de Téléphone (Bénin)
-                  </label>
-                  <input
-                    type="tel"
-                    value={userPhone}
-                    onChange={(e) => setUserPhone(e.target.value)}
-                    placeholder="Ex: +229 97 12 34 56"
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-900 focus:border-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    Adresse Email
-                  </label>
-                  <input
-                    type="email"
-                    value={userEmail}
-                    onChange={(e) => setUserEmail(e.target.value)}
-                    placeholder="Ex: paul.bioguera@gmail.com"
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-900 focus:border-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddMode('INVITE_NEW');
+                      setSelectedCitizenId('');
+                      setUserName('');
+                      setUserPhone('');
+                      setUserEmail('');
+                    }}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-3 text-xs font-semibold transition ${addMode === 'INVITE_NEW'
+                        ? 'bg-white text-brand-600 shadow-xs dark:bg-gray-800 dark:text-brand-400'
+                        : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                      }`}
+                  >
+                    <UserPlus className="size-3.5" />
+                    <span>Nouveau / Invité</span>
+                  </button>
                 </div>
               </div>
+
+              {/* Mode 1 : Sélection d'un Citoyen déjà inscrit */}
+              {addMode === 'EXISTING_CITIZEN' && (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-brand-100 bg-brand-50/60 p-3 text-xs text-brand-900 dark:border-brand-900/40 dark:bg-brand-950/20 dark:text-brand-300 flex items-start gap-2">
+                    <Info className="size-4 shrink-0 text-brand-600 mt-0.5" />
+                    <span className="text-[11px] leading-relaxed">
+                      <strong>Règle de gouvernance :</strong> Pour être nommé à un poste ou participer aux votes, le citoyen doit d'abord être inscrit sur la plateforme et figurer dans ce registre des membres.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                      Rechercher un Citoyen sur la Plateforme *
+                    </label>
+                    <Select2
+                      value={selectedCitizenId}
+                      onChange={(e) => handleSelectCitizen(e.target.value)}
+                      className="mt-1 w-full"
+                      placeholder="-- Taper un nom, prénom ou téléphone --"
+                      required
+                    >
+                      <option value="">-- Choisir un citoyen inscrit --</option>
+                      {platformUsers.map((u) => {
+                        const isMember = members.some(
+                          (m) =>
+                            (m.userId && m.userId === u.id) ||
+                            m.id === u.id ||
+                            (u.phone && m.userPhone && m.userPhone.replace(/\s+/g, '') === u.phone.replace(/\s+/g, '')),
+                        );
+                        return (
+                          <option key={u.id} value={u.id}>
+                            {u.name} ({u.phone}){u.city ? ` • ${u.city}` : ''}{isMember ? ' [Déjà Membre]' : ''}
+                          </option>
+                        );
+                      })}
+                    </Select2>
+                  </div>
+
+                  {isCitizenAlreadyMember && (
+                    <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+                      <ShieldAlert className="size-4 text-amber-600 shrink-0" />
+                      <span>Ce citoyen est déjà membre officiel de cette association. Vous pouvez modifier ses responsabilités depuis l'organigramme du bureau ou sa fiche membre.</span>
+                    </div>
+                  )}
+
+                  {selectedCitizenId && !isCitizenAlreadyMember && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">
+                      <div className="flex items-center justify-between font-semibold">
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 className="size-4 text-emerald-600" />
+                          <span>Compte citoyen vérifié</span>
+                        </span>
+                        <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                          Prêt pour adhésion
+                        </span>
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-gray-700 dark:text-gray-300">
+                        <div><span className="text-gray-400">Nom :</span> {userName}</div>
+                        <div><span className="text-gray-400">Tél :</span> {userPhone}</div>
+                        {userEmail && <div className="col-span-2"><span className="text-gray-400">Email :</span> {userEmail}</div>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Mode 2 : Inscription préalable sur la plateforme */}
+              {addMode === 'INVITE_NEW' && (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3 text-xs text-indigo-900 dark:border-indigo-900/40 dark:bg-indigo-950/20 dark:text-indigo-300 flex items-start gap-2">
+                    <UserPlus className="size-4 shrink-0 text-indigo-600 mt-0.5" />
+                    <span className="text-[11px] leading-relaxed">
+                      Le citoyen sera enregistré sur <strong>My Community</strong> avec son identifiant citoyen unique, puis rattaché immédiatement au registre de votre association.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                      Nom &amp; Prénoms du Citoyen *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={userName}
+                      onChange={(e) => setUserName(e.target.value)}
+                      placeholder="Ex: Sèdami Gbaguidi"
+                      className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-900 focus:border-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                        Numéro de Téléphone (Bénin) *
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        value={userPhone}
+                        onChange={(e) => setUserPhone(e.target.value)}
+                        placeholder="Ex: +229 97 00 00 00"
+                        className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-900 focus:border-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                        Adresse Email (Optionnelle)
+                      </label>
+                      <input
+                        type="email"
+                        value={userEmail}
+                        onChange={(e) => setUserEmail(e.target.value)}
+                        placeholder="Ex: sedami@gmail.com"
+                        className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-900 focus:border-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                      Ville / Commune de Résidence
+                    </label>
+                    <input
+                      type="text"
+                      value={newCitizenCity}
+                      onChange={(e) => setNewCitizenCity(e.target.value)}
+                      placeholder="Ex: Abomey-Calavi, Cotonou, Parakou..."
+                      className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-900 focus:border-brand-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
@@ -1433,11 +1623,10 @@ export default function AssociationMembersPage() {
 
               {/* Section Cursus / Apprenant (Optionnelle pour assos citoyennes, mise en avant si éducative) */}
               <div
-                className={`rounded-2xl border p-4 space-y-3.5 transition ${
-                  isStudentMember
+                className={`rounded-2xl border p-4 space-y-3.5 transition ${isStudentMember
                     ? 'border-indigo-200 bg-linear-to-b from-indigo-50/50 to-purple-50/30 dark:border-indigo-900 dark:bg-indigo-950/20'
                     : 'border-gray-200 bg-gray-50/40 dark:border-gray-800 dark:bg-gray-950/40'
-                }`}
+                  }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -1501,19 +1690,19 @@ export default function AssociationMembersPage() {
                       <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300">
                         Établissement, Université ou École
                       </label>
-                    <div className="mt-1">
-                      <Select2
-                        value={institutionName}
-                        onChange={(e) => setInstitutionName(e.target.value)}
-                        placeholder="Rechercher ou sélectionner un établissement..."
-                      >
-                        {BENIN_INSTITUTIONS.map((inst) => (
-                          <option key={inst} value={inst}>
-                            {inst}
-                          </option>
-                        ))}
-                      </Select2>
-                    </div>
+                      <div className="mt-1">
+                        <Select2
+                          value={institutionName}
+                          onChange={(e) => setInstitutionName(e.target.value)}
+                          placeholder="Rechercher ou sélectionner un établissement..."
+                        >
+                          {BENIN_INSTITUTIONS.map((inst) => (
+                            <option key={inst} value={inst}>
+                              {inst}
+                            </option>
+                          ))}
+                        </Select2>
+                      </div>
                     </div>
 
                     {institutionName === 'Autre Établissement (Saisie Libre)' && (
@@ -1571,11 +1760,10 @@ export default function AssociationMembersPage() {
                               key={t.id}
                               type="button"
                               onClick={() => toggleInterest(t.id)}
-                              className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold transition ${
-                                isSelected
+                              className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold transition ${isSelected
                                   ? 'bg-indigo-600 text-white shadow-xs'
                                   : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
-                              }`}
+                                }`}
                             >
                               {t.label}
                             </button>
@@ -1590,11 +1778,10 @@ export default function AssociationMembersPage() {
               {/* Section Informations Professionnelles (Strictement pour associations Professionnelles ou Éducatives) */}
               {isProfessionalOrEducational && (
                 <div
-                  className={`rounded-2xl border p-4 space-y-3.5 transition ${
-                    hasProfInfoInAdd
+                  className={`rounded-2xl border p-4 space-y-3.5 transition ${hasProfInfoInAdd
                       ? 'border-amber-200 bg-linear-to-b from-amber-50/50 to-orange-50/30 dark:border-amber-900 dark:bg-amber-950/20'
                       : 'border-gray-200 bg-gray-50/40 dark:border-gray-800 dark:bg-gray-950/40'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -1692,10 +1879,22 @@ export default function AssociationMembersPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || !userName.trim()}
-                  className="rounded-xl bg-brand-600 px-5 py-2 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+                  disabled={
+                    isSubmitting ||
+                    !userName.trim() ||
+                    (addMode === 'EXISTING_CITIZEN' && (!selectedCitizenId || isCitizenAlreadyMember)) ||
+                    (addMode === 'INVITE_NEW' && !userPhone.trim())
+                  }
+                  className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-brand-700 disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Inscription...' : 'Enregistrer'}
+                  <Check className="size-3.5" />
+                  <span>
+                    {isSubmitting
+                      ? 'Traitement en cours...'
+                      : addMode === 'EXISTING_CITIZEN'
+                        ? 'Affilier au Registre'
+                        : 'Inscrire & Affilier'}
+                  </span>
                 </button>
               </div>
             </form>
@@ -1707,11 +1906,10 @@ export default function AssociationMembersPage() {
       {selectedMemberCard && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200">
           <div
-            className={`w-full max-w-sm rounded-3xl p-6 text-white shadow-2xl border ${
-              isEducational
+            className={`w-full max-w-sm rounded-3xl p-6 text-white shadow-2xl border ${isEducational
                 ? 'bg-linear-to-br from-indigo-950 via-slate-900 to-purple-950 border-indigo-500/40'
                 : 'bg-linear-to-br from-brand-900 via-indigo-900 to-slate-900 border-brand-500/30'
-            }`}
+              }`}
           >
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div>
@@ -1767,17 +1965,17 @@ export default function AssociationMembersPage() {
                 </div>
                 {(selectedMemberCard.studentInfo.faculty ||
                   selectedMemberCard.studentInfo.fieldOfStudy) && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300">Cursus &amp; Filière :</span>
-                    <span className="font-semibold text-amber-200 truncate max-w-[180px]">
-                      {selectedMemberCard.studentInfo.studyLevel
-                        ? `${selectedMemberCard.studentInfo.studyLevel} — `
-                        : ''}
-                      {selectedMemberCard.studentInfo.faculty ||
-                        selectedMemberCard.studentInfo.fieldOfStudy}
-                    </span>
-                  </div>
-                )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-300">Cursus &amp; Filière :</span>
+                      <span className="font-semibold text-amber-200 truncate max-w-[180px]">
+                        {selectedMemberCard.studentInfo.studyLevel
+                          ? `${selectedMemberCard.studentInfo.studyLevel} — `
+                          : ''}
+                        {selectedMemberCard.studentInfo.faculty ||
+                          selectedMemberCard.studentInfo.fieldOfStudy}
+                      </span>
+                    </div>
+                  )}
                 {selectedMemberCard.studentInfo.opportunityInterests && (
                   <div className="pt-1 border-t border-white/10 text-[10px] text-indigo-200">
                     <span className="text-gray-400">Intérêts : </span>
@@ -1812,14 +2010,14 @@ export default function AssociationMembersPage() {
                 )}
                 {(selectedMemberCard.professionalInfo.company ||
                   selectedMemberCard.professionalInfo.companyOrOrganization) && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-300">Structure / Entreprise :</span>
-                    <span className="font-semibold text-amber-200 truncate max-w-[200px]">
-                      {selectedMemberCard.professionalInfo.company ||
-                        selectedMemberCard.professionalInfo.companyOrOrganization}
-                    </span>
-                  </div>
-                )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-300">Structure / Entreprise :</span>
+                      <span className="font-semibold text-amber-200 truncate max-w-[200px]">
+                        {selectedMemberCard.professionalInfo.company ||
+                          selectedMemberCard.professionalInfo.companyOrOrganization}
+                      </span>
+                    </div>
+                  )}
                 {selectedMemberCard.professionalInfo.industrySector && (
                   <div className="flex items-center justify-between">
                     <span className="text-gray-300">Secteur :</span>
@@ -1862,21 +2060,21 @@ export default function AssociationMembersPage() {
                   )}
                 {(selectedMemberCard.professionalInfo.linkedInUrl ||
                   selectedMemberCard.professionalInfo.linkedinUrl) && (
-                  <div className="pt-1 flex items-center justify-between text-[10px]">
-                    <span className="text-gray-400">Profil LinkedIn :</span>
-                    <a
-                      href={
-                        selectedMemberCard.professionalInfo.linkedInUrl ||
-                        selectedMemberCard.professionalInfo.linkedinUrl
-                      }
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-amber-300 underline font-medium hover:text-white"
-                    >
-                      Consulter le lien
-                    </a>
-                  </div>
-                )}
+                    <div className="pt-1 flex items-center justify-between text-[10px]">
+                      <span className="text-gray-400">Profil LinkedIn :</span>
+                      <a
+                        href={
+                          selectedMemberCard.professionalInfo.linkedInUrl ||
+                          selectedMemberCard.professionalInfo.linkedinUrl
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-amber-300 underline font-medium hover:text-white"
+                      >
+                        Consulter le lien
+                      </a>
+                    </div>
+                  )}
               </div>
             )}
 

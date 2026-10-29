@@ -34,6 +34,7 @@ export interface PostData {
   tagColor: "primary" | "success" | "warning" | "info";
   content: string;
   hasImage?: boolean;
+  imageUrl?: string;
   imageCaption?: string;
   likes: number;
   supports: number;
@@ -175,17 +176,26 @@ export const CitizenPostCard: React.FC<CitizenPostCardProps> = ({
 
       {/* Attached Image Illustration Card if present */}
       {post.hasImage && (
-        <div className="mt-4 overflow-hidden rounded-2xl border border-gray-100 bg-gradient-to-br from-brand-50 via-indigo-50/50 to-emerald-50/30 p-5 dark:border-gray-800 dark:from-brand-950/40 dark:via-indigo-950/20 dark:to-emerald-950/20">
-          <div className="flex items-center justify-between">
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-800 dark:text-gray-200">
-              <Camera className="size-3.5 text-brand-600 shrink-0" />
-              <span>Action Citoyenne sur le Terrain</span>
-            </span>
-            <Badge variant="light" color="success" size="sm">Vérifiée</Badge>
+        <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200/90 bg-gray-50 shadow-xs dark:border-gray-800 dark:bg-gray-950">
+          <div className="relative aspect-video w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
+            <img
+              src={post.imageUrl || "/images/feed-solidarity.jpg"}
+              alt={post.imageCaption || "Action citoyenne sur le terrain"}
+              className="h-full w-full object-cover transition duration-300 hover:scale-[1.02]"
+              loading="lazy"
+            />
+            <div className="absolute top-3 left-3">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-[11px] font-bold text-white backdrop-blur-md">
+                <Camera className="size-3 text-emerald-400" />
+                <span>Terrain Vérifié</span>
+              </span>
+            </div>
           </div>
-          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-            {post.imageCaption || "Prise de vue des travaux d'aménagement et de salubrité coordonnés par le comité de quartier."}
-          </p>
+          {post.imageCaption && (
+            <div className="p-3 text-[11px] text-gray-600 dark:text-gray-400 border-t border-gray-100 dark:border-gray-800/80">
+              {post.imageCaption}
+            </div>
+          )}
         </div>
       )}
 

@@ -15,12 +15,16 @@ import { useCommunities } from "@/features/communities";
 interface CitizenRightWidgetsProps {
   onOpenCommunityDetail: (communityId: string) => void;
   joinedIds: string[];
+  pendingIds?: string[];
+  joiningId?: string | null;
   onToggleJoin: (communityId: string) => void;
 }
 
 export const CitizenRightWidgets: React.FC<CitizenRightWidgetsProps> = ({
   onOpenCommunityDetail,
   joinedIds,
+  pendingIds = [],
+  joiningId = null,
   onToggleJoin,
 }) => {
   const { communities } = useCommunities();
@@ -54,6 +58,8 @@ export const CitizenRightWidgets: React.FC<CitizenRightWidgetsProps> = ({
         <ul className="mt-3 divide-y divide-gray-100 text-xs dark:divide-gray-800">
           {communities.slice(0, 4).map((c) => {
             const isJoined = joinedIds.includes(c.id);
+            const isPending = pendingIds.includes(c.id);
+            const isJoining = joiningId === c.id;
 
             return (
               <li key={c.id} className="py-2.5">
@@ -73,17 +79,32 @@ export const CitizenRightWidgets: React.FC<CitizenRightWidgetsProps> = ({
 
                   <button
                     type="button"
+                    disabled={isJoined || isPending || isJoining}
                     onClick={() => onToggleJoin(c.id)}
-                    className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-[11px] font-bold transition shrink-0 ${
+                    className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-bold transition shrink-0 ${
                       isJoined
-                        ? "border border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
-                        : "bg-brand-600 text-white hover:bg-brand-700 shadow-2xs"
+                        ? "border border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 cursor-default"
+                        : isPending
+                        ? "border border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400 cursor-default"
+                        : isJoining
+                        ? "border border-brand-300 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 opacity-75 cursor-wait"
+                        : "bg-brand-600 text-white hover:bg-brand-700 shadow-2xs active:scale-95"
                     }`}
                   >
                     {isJoined ? (
                       <>
                         <CheckIcon className="size-3" />
                         <span>Adhérent</span>
+                      </>
+                    ) : isPending ? (
+                      <>
+                        <span className="flex size-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        <span>En attente</span>
+                      </>
+                    ) : isJoining ? (
+                      <>
+                        <span className="size-3 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" />
+                        <span>Envoi...</span>
                       </>
                     ) : (
                       <>
@@ -114,33 +135,9 @@ export const CitizenRightWidgets: React.FC<CitizenRightWidgetsProps> = ({
         </div>
 
         <div className="mt-3 space-y-3 text-xs">
-          <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-2.5 dark:border-gray-800 dark:bg-gray-800/40">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-gray-900 dark:text-white">
-                Salubrité Bidossessi
-              </span>
-              <Badge variant="light" color="success" size="sm">
-                Samedi 07h30
-              </Badge>
-            </div>
-            <p className="mt-1 text-[11px] text-gray-500">
-              Quartier Bidossessi • Organisé par AJAC
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-2.5 dark:border-gray-800 dark:bg-gray-800/40">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-gray-900 dark:text-white">
-                AG Logement UAC
-              </span>
-              <Badge variant="light" color="info" size="sm">
-                Mercredi 15h
-              </Badge>
-            </div>
-            <p className="mt-1 text-[11px] text-gray-500">
-              Amphi Houdégbé • Baux étudiants
-            </p>
-          </div>
+          <p className="text-gray-500 text-xs text-center py-2">
+            Aucun événement programmé prochainement.
+          </p>
         </div>
       </div>
 

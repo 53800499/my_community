@@ -5,6 +5,7 @@ import { NotificationsModule } from '../notifications/notifications.module.js';
 import { CommunitiesController } from './presentation/http/controllers/communities.controller.js';
 import { CommunityProposalsController } from './presentation/http/controllers/community-proposals.controller.js';
 import { ApproveCommunityUseCase } from './application/commands/approve-community.use-case.js';
+import { DeleteCommunityUseCase } from './application/commands/delete-community.use-case.js';
 import { SubmitProposalUseCase } from './application/commands/submit-proposal.use-case.js';
 import { ReviewProposalUseCase } from './application/commands/review-proposal.use-case.js';
 import { GetCommunityQuery } from './application/queries/get-community.query.js';
@@ -64,6 +65,7 @@ import { PrismaPostRepository } from './infrastructure/persistence/prisma-post.r
       useExisting: PrismaPostRepository,
     },
     ApproveCommunityUseCase,
+    DeleteCommunityUseCase,
     SubmitProposalUseCase,
     ReviewProposalUseCase,
     GetCommunityQuery,
@@ -81,6 +83,7 @@ import { PrismaPostRepository } from './infrastructure/persistence/prisma-post.r
     POST_READER_PORT,
     POST_WRITER_PORT,
     ApproveCommunityUseCase,
+    DeleteCommunityUseCase,
     SubmitProposalUseCase,
     ReviewProposalUseCase,
     GetCommunityQuery,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import { useAuth } from "@/features/auth";
@@ -15,7 +15,12 @@ import {
 
 export const PublicNavbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const userInitials = user?.firstName
     ? `${user.firstName[0]}${user.lastName?.[0] || ""}`.toUpperCase()
@@ -62,20 +67,30 @@ export const PublicNavbar: React.FC = () => {
           >
             FAQ
           </Link>
-          <Link
-            href="/communities"
-            className="inline-flex items-center gap-1 text-gray-500 hover:text-brand-600 dark:hover:text-white transition"
-          >
-            <Compass className="size-3.5 text-brand-500" />
-            <span>Territoires</span>
-          </Link>
+          {mounted && isAuthenticated ? (
+            <Link
+              href="/communities"
+              className="inline-flex items-center gap-1 text-gray-500 hover:text-brand-600 dark:hover:text-white transition"
+            >
+              <Compass className="size-3.5 text-brand-500" />
+              <span>Territoires</span>
+            </Link>
+          ) : (
+            <Link
+              href="/#espaces"
+              className="inline-flex items-center gap-1 text-gray-500 hover:text-brand-600 dark:hover:text-white transition"
+            >
+              <Compass className="size-3.5 text-brand-500" />
+              <span>Découvrir</span>
+            </Link>
+          )}
         </nav>
 
         {/* Right Actions */}
         <div className="flex items-center gap-2">
           <ThemeToggleButton />
 
-          {isAuthenticated ? (
+          {mounted && isAuthenticated ? (
             /* Logged in state */
             <div className="flex items-center gap-2">
               <Link
@@ -127,56 +142,82 @@ export const PublicNavbar: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Drawer (Native App Feel, Soft & Clean) */}
+      {/* Mobile Drawer (Native App Feel, Frosted Glass & Tactile Ergonomics) */}
       {mobileMenuOpen && (
         <>
           <div
-            className="fixed inset-0 top-16 z-30 bg-gray-950/40 backdrop-blur-xs md:hidden"
+            className="fixed inset-0 top-16 z-30 bg-gray-950/60 backdrop-blur-sm md:hidden animate-in fade-in duration-200"
             onClick={() => setMobileMenuOpen(false)}
             aria-hidden="true"
           />
-          <div className="relative z-40 border-b border-gray-100 bg-white/95 px-5 py-5 backdrop-blur-xl shadow-xl dark:border-gray-800 dark:bg-gray-950/95 md:hidden animate-in slide-in-from-top duration-200">
-            <nav className="flex flex-col gap-2.5 text-sm font-semibold">
+          <div className="fixed inset-x-0 top-16 z-40 max-h-[calc(100vh-4rem)] overflow-y-auto border-b border-gray-200/80 bg-white/95 px-5 py-6 backdrop-blur-2xl shadow-2xl dark:border-gray-800 dark:bg-gray-950/95 md:hidden animate-in slide-in-from-top-4 duration-200 rounded-b-3xl">
+            {/* Top Territory Badge in Drawer */}
+            <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-3 dark:bg-gray-900/80 border border-gray-100 dark:border-gray-800/60 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="flex size-2 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20" />
+                <span className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                  République du Bénin
+                </span>
+              </div>
+              <span className="text-[10px] font-semibold text-brand-600 dark:text-brand-400">
+                77 Communes
+              </span>
+            </div>
+
+            <nav className="flex flex-col gap-1.5 text-sm font-semibold">
               <Link
                 href="/#espaces"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-between rounded-xl px-3 py-2 text-gray-800 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-900"
+                className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-gray-800 hover:bg-gray-100/80 dark:text-gray-200 dark:hover:bg-gray-900 transition-colors"
               >
                 <span>Les 3 Espaces Dédiés</span>
+                <span className="text-xs text-gray-400">→</span>
+              </Link>
+              <Link
+                href="/#simulateur"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-gray-800 hover:bg-gray-100/80 dark:text-gray-200 dark:hover:bg-gray-900 transition-colors"
+              >
+                <span>Simulateur d&apos;Application</span>
+                <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-600 dark:bg-brand-950 dark:text-brand-300">
+                  Interactif
+                </span>
               </Link>
               <Link
                 href="/#comment-ca-marche"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-between rounded-xl px-3 py-2 text-gray-800 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-900"
+                className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-gray-800 hover:bg-gray-100/80 dark:text-gray-200 dark:hover:bg-gray-900 transition-colors"
               >
                 <span>Comment ça marche</span>
+                <span className="text-xs text-gray-400">→</span>
               </Link>
               <Link
                 href="/#faq"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-between rounded-xl px-3 py-2 text-gray-800 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-900"
+                className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-gray-800 hover:bg-gray-100/80 dark:text-gray-200 dark:hover:bg-gray-900 transition-colors"
               >
-                <span>Foire Aux Questions</span>
+                <span>Foire Aux Questions (FAQ)</span>
+                <span className="text-xs text-gray-400">→</span>
               </Link>
               <Link
-                href="/communities"
+                href={mounted && isAuthenticated ? "/communities" : "/#espaces"}
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-between rounded-xl px-3 py-2 text-gray-800 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-900"
+                className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-gray-800 hover:bg-gray-100/80 dark:text-gray-200 dark:hover:bg-gray-900 transition-colors"
               >
                 <span className="flex items-center gap-2">
                   <Compass className="size-4 text-brand-600" />
-                  <span>Explorer Territoires</span>
+                  <span>{mounted && isAuthenticated ? "Explorer les Territoires" : "Découvrir la Plateforme"}</span>
                 </span>
-                <span className="text-[10px] font-bold text-gray-400">77 Communes</span>
+                <span className="text-[10px] font-bold text-gray-400">Bénin</span>
               </Link>
 
-              <div className="mt-2 pt-3 border-t border-gray-100 dark:border-gray-800/80 flex flex-col gap-2">
-                {isAuthenticated ? (
+              <div className="mt-3 pt-4 border-t border-gray-100 dark:border-gray-800/80 flex flex-col gap-2.5">
+                {mounted && isAuthenticated ? (
                   <>
                     <Link
                       href="/feed"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 text-xs font-bold text-white shadow-xs"
+                      className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-brand-600 text-xs font-bold text-white shadow-md shadow-brand-500/25 active:scale-95 transition"
                     >
                       <span>Accéder à Mon Espace Citoyen</span>
                       <ArrowRight className="size-4" />
@@ -187,7 +228,7 @@ export const PublicNavbar: React.FC = () => {
                         logout();
                         setMobileMenuOpen(false);
                       }}
-                      className="flex h-9 items-center justify-center gap-2 text-xs font-semibold text-rose-600 hover:underline"
+                      className="flex h-10 items-center justify-center gap-2 text-xs font-semibold text-rose-600 hover:underline"
                     >
                       <LogOut className="size-3.5" />
                       <span>Se déconnecter</span>
@@ -198,15 +239,15 @@ export const PublicNavbar: React.FC = () => {
                     <Link
                       href="/register"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 text-xs font-bold text-white shadow-xs"
+                      className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 text-xs font-bold text-white shadow-md shadow-brand-500/25 active:scale-95 transition"
                     >
                       <Sparkles className="size-4" />
-                      <span>Créer un compte citoyen</span>
+                      <span>Créer mon compte citoyen gratuit</span>
                     </Link>
                     <Link
                       href="/login"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex h-10 items-center justify-center rounded-xl border border-gray-200 text-xs font-bold text-gray-800 dark:border-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900"
+                      className="flex h-11 items-center justify-center rounded-2xl border border-gray-200 text-xs font-bold text-gray-800 dark:border-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 active:scale-95 transition"
                     >
                       <span>Se connecter</span>
                     </Link>

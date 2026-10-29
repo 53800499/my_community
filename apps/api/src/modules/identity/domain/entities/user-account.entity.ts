@@ -9,6 +9,7 @@ export interface UserAccountProps {
   phoneNumber: PhoneNumber;
   passwordHash: PasswordHash;
   status?: AccountStatus;
+  isPlatformAdmin?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -24,6 +25,7 @@ export class UserAccountEntity {
   private _phoneNumber: PhoneNumber;
   private _passwordHash: PasswordHash;
   private _status: AccountStatus;
+  private readonly _isPlatformAdmin: boolean;
   private readonly _createdAt: Date;
   private _updatedAt: Date;
 
@@ -33,6 +35,7 @@ export class UserAccountEntity {
     phoneNumber: PhoneNumber;
     passwordHash: PasswordHash;
     status: AccountStatus;
+    isPlatformAdmin: boolean;
     createdAt: Date;
     updatedAt: Date;
   }) {
@@ -41,6 +44,7 @@ export class UserAccountEntity {
     this._phoneNumber = props.phoneNumber;
     this._passwordHash = props.passwordHash;
     this._status = props.status;
+    this._isPlatformAdmin = props.isPlatformAdmin;
     this._createdAt = props.createdAt;
     this._updatedAt = props.updatedAt;
   }
@@ -66,6 +70,7 @@ export class UserAccountEntity {
       phoneNumber: props.phoneNumber,
       passwordHash: props.passwordHash,
       status: props.status ?? AccountStatus.ACTIVE,
+      isPlatformAdmin: Boolean(props.isPlatformAdmin),
       createdAt: props.createdAt ?? now,
       updatedAt: props.updatedAt ?? now,
     });
@@ -73,6 +78,10 @@ export class UserAccountEntity {
 
   public get id(): string {
     return this._id;
+  }
+
+  public get isPlatformAdmin(): boolean {
+    return this._isPlatformAdmin;
   }
 
   public get email(): Email | null {

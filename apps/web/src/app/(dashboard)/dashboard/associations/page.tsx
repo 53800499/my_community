@@ -22,23 +22,34 @@ import {
   ChevronUp,
   HelpCircle,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { useAssociations, Association } from '@/features/associations';
 import { communityApiService, ApiCommunity } from '@/features/communities';
 import { Select2 } from '@/components/ui/Select2';
 import { apiService } from '@/lib/api';
+import { usePermissions } from '@/features/auth';
 
 export default function AssociationsPage() {
+  const { isAdmin, isSuperAdmin, isPresident } = usePermissions();
+  const canDissolve = Boolean(isAdmin || isSuperAdmin || isPresident);
   const {
     associations,
     isLoading,
     registerAssociation,
     linkCommunity,
+    deleteAssociation,
   } = useAssociations();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [toast, setToast] = useState<string | null>(null);
   const [showGovernanceGuide, setShowGovernanceGuide] = useState(false);
+
+  // Deletion Modal
+  const [deletingAssoc, setDeletingAssoc] = useState<Association | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // New Assoc Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -52,17 +63,9 @@ export default function AssociationsPage() {
 
   // Link Community Modal
   const [linkingAssoc, setLinkingAssoc] = useState<Association | null>(null);
-  const [selectedCommunityChoice, setSelectedCommunityChoice] = useState('Habitants de Zogbadjè (Abomey-Calavi)');
+  const [selectedCommunityChoice, setSelectedCommunityChoice] = useState('');
   const [customCommunityName, setCustomCommunityName] = useState('');
-  const [availableCommunities, setAvailableCommunities] = useState<string[]>([
-    'Habitants de Zogbadjè (Abomey-Calavi)',
-    'Communauté des Développeurs du Bénin',
-    'Étudiants & Apprenants de l’UAC',
-    'Collectif Citoyen de Fidjrossè (Cotonou)',
-    'Résidents de Ganhi & Akpakpa',
-    'Jeunesse Active de Parakou',
-    'Commune d’Abomey-Calavi',
-  ]);
+  const [availableCommunities, setAvailableCommunities] = useState<string[]>([]);
   const [linkError, setLinkError] = useState<string | null>(null);
 
   // Charger les communautés existantes pour le rattachement
@@ -72,10 +75,11 @@ export default function AssociationsPage() {
         const comms = await communityApiService.list();
         if (comms && comms.length > 0) {
           const names = comms.map((c: ApiCommunity) => c.name);
-          setAvailableCommunities((prev) => Array.from(new Set([...prev, ...names])));
+          setAvailableCommunities(names);
+          setSelectedCommunityChoice(names[0]);
         }
       } catch {
-        // Fallback par défaut conservé
+        // Mode dégradé si backend non accessible
       }
     }
     loadCommunities();
@@ -192,6 +196,29 @@ export default function AssociationsPage() {
       const msg = err instanceof Error ? err.message : 'Erreur lors du rattachement.';
       setLinkError(msg);
       showToast(msg);
+    }
+  };
+
+  const handleDeleteAssociation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!deletingAssoc) return;
+    if (deleteConfirmName.trim().toLowerCase() !== deletingAssoc.name.trim().toLowerCase()) {
+      setDeleteError(`Veuillez saisir exactement le nom « ${deletingAssoc.name} » pour confirmer.`);
+      return;
+    }
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteAssociation(deletingAssoc.id, deleteConfirmName);
+      showToast(`L'association « ${deletingAssoc.name} » a été dissoute et retirée avec succès.`);
+      setDeletingAssoc(null);
+      setDeleteConfirmName('');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erreur lors de la dissolution.';
+      setDeleteError(msg);
+      showToast(msg);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -463,6 +490,20 @@ export default function AssociationsPage() {
                     <Contact className="size-3.5" />
                     <span>Membres</span>
                   </Link>
+                  {canDissolve && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeletingAssoc(assoc);
+                        setDeleteConfirmName('');
+                        setDeleteError(null);
+                      }}
+                      className="inline-flex items-center rounded-xl p-2 text-gray-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 transition"
+                      title="Dissoudre / Supprimer cette association"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -677,6 +718,84 @@ export default function AssociationsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Dissolution & Suppression Sécurisée */}
+      {deletingAssoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-700">
+              <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                <AlertTriangle className="size-5 shrink-0" />
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">
+                  Dissoudre l&apos;Association
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeletingAssoc(null)}
+                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-xs text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/30 dark:text-rose-200">
+                <p className="font-bold">Avertissement de gouvernance &amp; impact :</p>
+                <ul className="mt-1.5 list-disc pl-4 space-y-1 text-[11px] text-rose-800 dark:text-rose-300">
+                  <li>La dissolution clôture immédiatement l&apos;espace de « <strong>{deletingAssoc.name}</strong> ».</li>
+                  <li>Les {deletingAssoc.membersCount || 1} membre(s) seront déliés et les mandats du bureau prendront fin.</li>
+                  <li>Les rattachements aux espaces communautaires territoriaux seront révoqués.</li>
+                </ul>
+              </div>
+
+              {deleteError && (
+                <div className="rounded-xl border border-rose-300 bg-rose-100 p-3 text-xs text-rose-800 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                  {deleteError}
+                </div>
+              )}
+
+              <form onSubmit={handleDeleteAssociation} className="space-y-4 pt-1">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    Pour confirmer, tapez le nom exact : <span className="font-mono text-rose-600 dark:text-rose-400 select-all font-bold">{deletingAssoc.name}</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={deleteConfirmName}
+                    onChange={(e) => setDeleteConfirmName(e.target.value)}
+                    placeholder="Recopier le nom de l'association ici..."
+                    className="mt-1.5 w-full rounded-xl border border-gray-300 px-3.5 py-2 text-xs text-gray-900 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setDeletingAssoc(null)}
+                    disabled={isDeleting}
+                    className="rounded-xl px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={
+                      isDeleting ||
+                      deleteConfirmName.trim().toLowerCase() !== deletingAssoc.name.trim().toLowerCase()
+                    }
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  >
+                    <Trash2 className="size-3.5" />
+                    <span>{isDeleting ? "Dissolution en cours..." : "Confirmer la Dissolution"}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

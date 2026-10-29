@@ -41,6 +41,7 @@ export const STORAGE_KEYS = {
   MANDATE_AUDIT_LOGS: "mc_dyn_mandate_audit_logs",
   ASSOCIATION_MANDATES: "mc_dyn_association_mandates",
   FEED_POSTS: "mc_dyn_feed_posts",
+  USERS: "mc_dyn_users",
 } as const;
 
 export const isUuidV4 = (val?: string | null): boolean => {

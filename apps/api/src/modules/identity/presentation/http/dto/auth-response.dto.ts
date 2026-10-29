@@ -29,6 +29,19 @@ export class UserAccountResponseDto {
   status!: string;
 
   @ApiProperty({
+    description: 'Drapeau indiquant si le compte dispose des privilèges de Super-Administrateur de la plateforme',
+    example: true,
+  })
+  isPlatformAdmin!: boolean;
+
+  @ApiProperty({
+    description: 'Rôle global attribué sur la plateforme',
+    example: 'SUPER_ADMIN',
+    enum: ['SUPER_ADMIN', 'ADMIN', 'CITIZEN'],
+  })
+  role!: string;
+
+  @ApiProperty({
     description: 'Horodatage ISO-8601 de création du compte',
     example: '2026-10-22T10:00:00.000Z',
     format: 'date-time',

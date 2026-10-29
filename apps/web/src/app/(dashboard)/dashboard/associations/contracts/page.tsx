@@ -48,24 +48,13 @@ export default function AssociationContractsPage() {
   // Toast
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
-  if (!isExecutive) {
-    return (
-      <AccessRestricted
-        title="Conventions & Actes d'Intégration Confidentiels"
-        description="Les conventions d'intégration, chartes institutionnelles et engagements financiers des associations sont des actes juridiques réservés aux présidents et membres des bureaux exécutifs. Votre statut adhérent ne dispose pas de l'habilitation requise."
-        requiredRole="Président(e) ou Bureau Exécutif"
-        backHref="/dashboard/associations"
-        backLabel="Retour à l'annuaire associatif"
-      />
-    );
-  }
-
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   };
 
   const loadData = useCallback(async () => {
+    if (!isExecutive) return;
     setIsLoading(true);
     try {
       const [cList, aList] = await Promise.all([
@@ -85,11 +74,13 @@ export default function AssociationContractsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [newAssocId]);
+  }, [newAssocId, isExecutive]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (isExecutive) {
+      loadData();
+    }
+  }, [loadData, isExecutive]);
 
   // Handle Association select change in creation modal
   const handleAssocSelectChange = (assocId: string) => {
@@ -201,6 +192,18 @@ export default function AssociationContractsPage() {
 
   const activeCount = contracts.filter((c) => c.status === "ACTIVE").length;
   const pendingCount = contracts.filter((c) => c.status === "PENDING_SIGNATURE").length;
+
+  if (!isExecutive) {
+    return (
+      <AccessRestricted
+        title="Conventions & Actes d'Intégration Confidentiels"
+        description="Les conventions d'intégration, chartes institutionnelles et engagements financiers des associations sont des actes juridiques réservés aux présidents et membres des bureaux exécutifs. Votre statut adhérent ne dispose pas de l'habilitation requise."
+        requiredRole="Président(e) ou Bureau Exécutif"
+        backHref="/dashboard/associations"
+        backLabel="Retour à l'annuaire associatif"
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

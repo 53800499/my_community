@@ -39,18 +39,6 @@ export default function AssociationPermissionsPage() {
     isLoading: isLoadingAssocs,
   } = useAssociations();
 
-  if (!isExecutive) {
-    return (
-      <AccessRestricted
-        title="Gestion des Habilitations & Sécurité Associative"
-        description="La gestion des droits d'accès aux espaces, des habilitations de signature financière et de modération est une prérogative stricte du bureau exécutif et des administrateurs système."
-        requiredRole="Président(e), Administrateur ou Délégué Sécurité"
-        backHref="/dashboard/associations"
-        backLabel="Retour à l'annuaire associatif"
-      />
-    );
-  }
-
   const {
     positions,
     isLoading: isLoadingPositions,
@@ -133,6 +121,18 @@ export default function AssociationPermissionsPage() {
   const countCertSigners = positions.filter((p) =>
     p.permissions?.includes('residences:issue_certificate'),
   ).length;
+
+  if (!isExecutive) {
+    return (
+      <AccessRestricted
+        title="Gestion des Habilitations & Sécurité Associative"
+        description="La gestion des droits d'accès aux espaces, des habilitations de signature financière et de modération est une prérogative stricte du bureau exécutif et des administrateurs système."
+        requiredRole="Président(e), Administrateur ou Délégué Sécurité"
+        backHref="/dashboard/associations"
+        backLabel="Retour à l'annuaire associatif"
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

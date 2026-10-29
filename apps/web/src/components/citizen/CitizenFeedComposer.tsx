@@ -19,6 +19,7 @@ export interface NewPostPayload {
   quarter: string;
   communityId?: string;
   hasImage?: boolean;
+  imageUrl?: string;
 }
 
 interface CitizenFeedComposerProps {
@@ -138,6 +139,7 @@ export const CitizenFeedComposer: React.FC<CitizenFeedComposerProps> = ({
       quarter: quarterName,
       communityId: resolvedCommunityId,
       hasImage: includeImage,
+      imageUrl: includeImage ? "/images/feed-solidarity.jpg" : undefined,
     });
 
     setContent("");
@@ -186,18 +188,25 @@ export const CitizenFeedComposer: React.FC<CitizenFeedComposerProps> = ({
           })}
         </div>
 
-        {/* Attachment preview banner if selected */}
+        {/* Attachment preview banner with real thumbnail */}
         {includeImage && (
           <div className="relative overflow-hidden rounded-2xl border border-brand-200 bg-brand-50/60 p-3 dark:border-brand-800 dark:bg-brand-950/40 animate-in fade-in">
             <div className="flex items-center justify-between text-xs font-semibold text-brand-800 dark:text-brand-300">
-              <div className="flex items-center gap-2">
-                <ImageIcon className="size-4" />
-                <span>Photo jointe : initiative_quartier_calavi.jpg</span>
+              <div className="flex items-center gap-3">
+                <img
+                  src="/images/feed-solidarity.jpg"
+                  alt="Aperçu photo"
+                  className="size-10 rounded-lg object-cover ring-1 ring-brand-300 shadow-2xs"
+                />
+                <div>
+                  <div className="font-bold text-gray-900 dark:text-white">Photo de terrain jointe</div>
+                  <div className="text-[10px] text-gray-500">Initiative &amp; entraide de quartier</div>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={handleRemoveImage}
-                className="text-rose-600 hover:underline active:scale-95 transition"
+                className="text-rose-600 font-bold hover:underline active:scale-95 transition"
               >
                 Supprimer
               </button>

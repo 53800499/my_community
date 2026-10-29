@@ -82,18 +82,6 @@ export function ResidenceGovernanceClient() {
   // Active Tab
   const [activeTab, setActiveTab] = useState<'RULES' | 'DELEGATES'>('RULES');
 
-  if (!isExecutive && !isSyndic) {
-    return (
-      <AccessRestricted
-        title="Règles & Délégués Résidents Confidentiels"
-        description="Le règlement intérieur des pavillons, la fixation des cautions et les contrats de mandats des délégués sont réservés aux gestionnaires de résidences, aux syndics et au bureau exécutif."
-        requiredRole="Syndic ou Responsable Résidentiel"
-        backHref="/dashboard/residences"
-        backLabel="Retour aux résidences & campus"
-      />
-    );
-  }
-
   // Simulation de rôle actif
   const [currentRoleSimulation, setCurrentRoleSimulation] = useState<RoleSimulation>(RESIDENCE_ROLE_SIMULATIONS[0]);
 
@@ -503,6 +491,18 @@ export function ResidenceGovernanceClient() {
       return true;
     });
   }, [contracts, buildingFilter, roleFilter, statusFilter, searchFilter]);
+
+  if (!isExecutive && !isSyndic) {
+    return (
+      <AccessRestricted
+        title="Règles & Délégués Résidents Confidentiels"
+        description="Le règlement intérieur des pavillons, la fixation des cautions et les contrats de mandats des délégués sont réservés aux gestionnaires de résidences, aux syndics et au bureau exécutif."
+        requiredRole="Syndic ou Responsable Résidentiel"
+        backHref="/dashboard/residences"
+        backLabel="Retour aux résidences & campus"
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 pb-12">

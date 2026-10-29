@@ -192,4 +192,10 @@ export class PrismaAssociationRepository
       },
     });
   }
+
+  async delete(associationId: string): Promise<void> {
+    await this.prisma.association.delete({
+      where: { id: associationId },
+    });
+  }
 }

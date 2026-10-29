@@ -272,6 +272,7 @@ export interface RegisterAssociationInput {
 }
 
 export interface AddMemberInput {
+  userId?: string;
   userName: string;
   userPhone?: string;
   userEmail?: string;

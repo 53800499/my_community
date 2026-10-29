@@ -53,16 +53,10 @@ export const mandateAuditTrailService = {
     category?: string;
     searchTerm?: string;
   }): Promise<ApiMandateAuditAction[]> {
-    let list = getLocalState<ApiMandateAuditAction[]>(
+    const list = getLocalState<ApiMandateAuditAction[]>(
       STORAGE_KEYS.MANDATE_AUDIT_LOGS,
       []
     );
-
-    // Initialiser des traces fondamentales dynamiques si le journal est vide pour l'association
-    if (list.length === 0 && filter?.associationId) {
-      list = this.generateInitialMandateAuditTrail(filter.associationId);
-      setLocalState(STORAGE_KEYS.MANDATE_AUDIT_LOGS, list);
-    }
 
     let filtered = list;
     if (filter?.associationId && filter.associationId !== "ALL") {
@@ -152,96 +146,5 @@ export const mandateAuditTrailService = {
       totalIncomeXOF: totalIncome,
       totalExpenseXOF: totalExpense,
     };
-  },
-
-  /**
-   * Traces initiales dynamiques générées sans aucune date ou titre en dur.
-   */
-  generateInitialMandateAuditTrail(associationId: string): ApiMandateAuditAction[] {
-    const currentYear = new Date().getFullYear();
-    const storedMandates = getLocalState<ApiAssociationMandate[]>(STORAGE_KEYS.ASSOCIATION_MANDATES, []);
-    const assocMandates = storedMandates.filter((m) => m.associationId === associationId);
-    const activeMandate = assocMandates.find((m) => m.status === "ACTIVE");
-
-    const currentPeriod = activeMandate
-      ? `${activeMandate.title} (${activeMandate.academicYear})`
-      : `Mandat ${currentYear}-${currentYear + 1}`;
-    const pastPeriod = `Mandat Précédent (${currentYear - 1}-${currentYear})`;
-
-    const presidentName = activeMandate?.presidentName || "Président(e) du Bureau";
-    const treasurerName = activeMandate?.treasurerName || "Trésorier(e) Général(e)";
-
-    return [
-      {
-        id: generateUuid(),
-        associationId,
-        mandatePeriod: currentPeriod,
-        mandateContractNumber: `MANDAT-${currentYear}-001`,
-        actorId: activeMandate?.presidentUserId || "usr-pres-active",
-        actorName: presidentName,
-        actorRole: "Président(e) du Bureau",
-        category: "GOVERNANCE",
-        actionType: "MANDATE_INVESTITURE",
-        actionTitle: `Investiture officielle et prise de fonction du ${currentPeriod}`,
-        resourceType: "EXECUTIVE_CONTRACT",
-        resourceId: `ctr-${currentYear}-001`,
-        details: "Validation démocratique du bureau exécutif, entrée en fonction et engagement de transparence.",
-        integrityHash: `MC-SEAL-${associationId.slice(0, 8)}-${currentYear}-INV`,
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
-      },
-      {
-        id: generateUuid(),
-        associationId,
-        mandatePeriod: currentPeriod,
-        mandateContractNumber: `MANDAT-${currentYear}-002`,
-        actorId: activeMandate?.treasurerUserId || "usr-tres-active",
-        actorName: treasurerName,
-        actorRole: "Trésorier(e) Général(e)",
-        category: "FINANCE",
-        actionType: "BUDGET_ADOPTION",
-        actionTitle: "Ouverture du Grand Livre et affectation du fonds de roulement",
-        resourceType: "FINANCE_LEDGER",
-        resourceId: `tx-init-${currentYear}`,
-        amountXOF: 500000,
-        details: "Adoption du budget prévisionnel et initialisation des comptes de trésorerie.",
-        integrityHash: `MC-SEAL-${associationId.slice(0, 8)}-${currentYear}-BUDGET`,
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 25).toISOString(),
-      },
-      {
-        id: generateUuid(),
-        associationId,
-        mandatePeriod: currentPeriod,
-        mandateContractNumber: `MANDAT-${currentYear}-003`,
-        actorId: activeMandate?.presidentUserId || "usr-pres-active",
-        actorName: presidentName,
-        actorRole: "Président(e) du Bureau",
-        category: "RESIDENCES",
-        actionType: "BUILDING_CONVENTION",
-        actionTitle: "Signature de la convention cadre de gestion des résidences",
-        resourceType: "BUILDING_LEASE",
-        resourceId: `lease-init-${currentYear}`,
-        details: "Conventionnement officiel pour l'hébergement et l'attribution des chambres.",
-        integrityHash: `MC-SEAL-${associationId.slice(0, 8)}-${currentYear}-CONV`,
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 15).toISOString(),
-      },
-      {
-        id: generateUuid(),
-        associationId,
-        mandatePeriod: pastPeriod,
-        mandateContractNumber: `MANDAT-${currentYear - 1}-001`,
-        actorId: "usr-past-pres",
-        actorName: "Présidence Sortante",
-        actorRole: "Président(e) Sortant(e)",
-        category: "GOVERNANCE",
-        actionType: "SERVICE_HANDOVER",
-        actionTitle: `Passation de charge officielle et transmission des pouvoirs`,
-        resourceType: "HANDOVER_PV",
-        resourceId: `pv-handover-${currentYear}`,
-        amountXOF: 1850000,
-        details: "Remise intégrale des registres comptables, quitus financier certifié et transmission de la présidence.",
-        integrityHash: `MC-SEAL-${associationId.slice(0, 8)}-${currentYear}-HANDOVER`,
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 60).toISOString(),
-      },
-    ];
   },
 };

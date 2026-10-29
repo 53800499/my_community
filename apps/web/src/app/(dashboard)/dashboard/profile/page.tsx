@@ -8,6 +8,7 @@ import { usePermissions } from "@/features/auth";
 import { useActiveAssociation } from "@/context/AssociationContext";
 import { useToast } from "@/features/errors";
 import { apiClient } from "@/lib/api-client";
+import { Select2 } from "@/components/ui/Select2";
 import {
   User,
   ShieldCheck,
@@ -524,10 +525,10 @@ export default function ProfilePage() {
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
                   Ville / Commune de Résidence Principale
                 </label>
-                <select
+                <Select2
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  className="mt-1.5 h-11 w-full rounded-xl border border-gray-200 bg-gray-50/60 px-3.5 text-xs text-gray-900 focus:border-brand-500 focus:bg-white focus:outline-none dark:border-gray-700 dark:bg-gray-800/60 dark:text-white"
+                  className="mt-1.5 w-full"
                 >
                   <option value="Abomey-Calavi">Abomey-Calavi (Atlantique)</option>
                   <option value="Cotonou">Cotonou (Littoral)</option>
@@ -541,7 +542,7 @@ export default function ProfilePage() {
                   <option value="Kandi">Kandi (Alibori)</option>
                   <option value="Lokossa">Lokossa (Mono)</option>
                   <option value="Allada">Allada (Atlantique)</option>
-                </select>
+                </Select2>
               </div>
             </div>
 

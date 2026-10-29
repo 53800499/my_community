@@ -18,6 +18,7 @@ interface CommunityDetailModalProps {
   communityId: string | null;
   onClose: () => void;
   isJoined?: boolean;
+  isPending?: boolean;
   membershipStatus?: "PENDING" | "ACTIVE" | "NONE";
   onToggleJoin?: (id: string) => void;
   onRefresh?: () => void;
@@ -27,6 +28,7 @@ export const CommunityDetailModal: React.FC<CommunityDetailModalProps> = ({
   communityId,
   onClose,
   isJoined = false,
+  isPending = false,
   membershipStatus = "NONE",
   onToggleJoin,
   onRefresh,
@@ -47,7 +49,7 @@ export const CommunityDetailModal: React.FC<CommunityDetailModalProps> = ({
 
   const [linkedAssociations, setLinkedAssociations] = React.useState<Association[]>([]);
   const [isLoadingAssocs, setIsLoadingAssocs] = React.useState(false);
-  const [localJoined, setLocalJoined] = React.useState(false);
+  const [localStatus, setLocalStatus] = React.useState<"ACTIVE" | "PENDING" | null>(null);
   const [isJoining, setIsJoining] = React.useState(false);
 
   React.useEffect(() => {
@@ -97,27 +99,30 @@ export const CommunityDetailModal: React.FC<CommunityDetailModalProps> = ({
     onRefresh?.();
   };
 
-  const effectiveStatus = currentMembership?.status || (isJoined || localJoined ? "ACTIVE" : membershipStatus);
+  const effectiveStatus = currentMembership?.status || localStatus || (isJoined ? "ACTIVE" : isPending ? "PENDING" : membershipStatus);
   const isMemberActive = effectiveStatus === "ACTIVE";
   const isMemberPending = effectiveStatus === "PENDING";
 
   const handleJoinClick = async () => {
-    if (isMemberActive || !communityId) return;
-    if (onToggleJoin) {
-      onToggleJoin(communityId);
-      setLocalJoined(true);
-      showSuccess("Votre demande d'adhésion a été transmise !", "Adhésion citoyenne");
-      return;
-    }
+    if (isMemberActive || isMemberPending || isJoining || !communityId) return;
     setIsJoining(true);
     try {
-      await communityApiService.requestMembership(communityId);
-      setLocalJoined(true);
-      showSuccess("Votre demande d'adhésion a été transmise avec succès !", "Adhésion citoyenne");
+      if (onToggleJoin) {
+        await onToggleJoin(communityId);
+      } else {
+        const mem = await communityApiService.requestMembership(communityId);
+        if (mem.status === "ACTIVE") {
+          setLocalStatus("ACTIVE");
+          showSuccess("Vous avez rejoint la communauté !", "Adhésion citoyenne");
+        } else {
+          setLocalStatus("PENDING");
+          showSuccess("Votre demande d'adhésion a été transmise avec succès au bureau !", "Adhésion citoyenne");
+        }
+      }
+      setLocalStatus("PENDING");
       onRefresh?.();
     } catch {
-      setLocalJoined(true);
-      showSuccess("Votre adhésion a été validée localement !", "Adhésion citoyenne");
+      setLocalStatus("PENDING");
     } finally {
       setIsJoining(false);
     }
@@ -160,14 +165,16 @@ export const CommunityDetailModal: React.FC<CommunityDetailModalProps> = ({
 
             <button
               type="button"
-              disabled={isJoining}
+              disabled={isJoining || isMemberActive || isMemberPending}
               onClick={handleJoinClick}
-              className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl px-5 py-2.5 text-xs font-bold transition shadow-xs active:scale-95 ${
+              className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold transition shadow-xs ${
                 isMemberActive
-                  ? "border border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
+                  ? "border border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 cursor-default"
                   : isMemberPending
-                  ? "border border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400"
-                  : "bg-brand-600 text-white hover:bg-brand-700"
+                  ? "border border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400 cursor-default"
+                  : isJoining
+                  ? "border border-brand-300 bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 opacity-75 cursor-wait"
+                  : "bg-brand-600 text-white hover:bg-brand-700 active:scale-95"
               }`}
             >
               {isMemberActive ? (
@@ -180,10 +187,15 @@ export const CommunityDetailModal: React.FC<CommunityDetailModalProps> = ({
                   <span className="flex size-2 rounded-full bg-amber-500 animate-pulse" />
                   <span>Demande en Attente</span>
                 </>
+              ) : isJoining ? (
+                <>
+                  <span className="size-3.5 animate-spin rounded-full border-2 border-brand-600 dark:border-brand-400 border-t-transparent" />
+                  <span>Envoi en cours...</span>
+                </>
               ) : (
                 <>
                   <PlusIcon className="size-4" />
-                  <span>{isJoining ? "Adhésion en cours..." : "Rejoindre la Communauté"}</span>
+                  <span>Rejoindre la Communauté</span>
                 </>
               )}
             </button>

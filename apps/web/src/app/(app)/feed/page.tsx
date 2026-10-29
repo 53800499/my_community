@@ -25,84 +25,6 @@ import { useToast } from "@/features/errors";
 import { useRouter, useSearchParams } from "next/navigation";
 import { STORAGE_KEYS, getLocalState, setLocalState } from "@/lib/api-client";
 
-const initialPosts: PostData[] = [
-  {
-    id: "p-1",
-    communityId: "4f79ff2c-c965-4af7-a99e-de4e4bf457dc",
-    author: "Association des Jeunes d'Abomey-Calavi (AJAC)",
-    avatarText: "AJ",
-    authorRole: "Bureau Exécutif • Association Reconnue",
-    quarter: "Quartier Bidossessi, Calavi",
-    timeAgo: "Il y a 35 minutes",
-    tag: "Action Citoyenne",
-    tagColor: "success",
-    content:
-      "Grande journée de salubrité et d'embellissement ce samedi dès 07h30 dans le quartier Bidossessi ! Munissez-vous de vos outils. Une collation fraternelle sera offerte par le bureau exécutif à l'issue de l'activité. Tous les résidents sont les bienvenus pour rendre nos rues propres et accueillantes !",
-    hasImage: true,
-    imageCaption:
-      "Planning d'intervention : Carrefour Bidossessi -> Voie pavée vers l'arrondissement.",
-    likes: 42,
-    supports: 28,
-    isLiked: true,
-    comments: [
-      {
-        id: "c-1",
-        author: "Koffi Mensah",
-        authorAvatar: "KM",
-        timeAgo: "Il y a 20 min",
-        text: "Excellente initiative ! Mes colocataires du Bâtiment Hibiscus et moi serons présents avec pelles et râteaux.",
-      },
-      {
-        id: "c-2",
-        author: "Dr. Armand Gbaguidi",
-        authorAvatar: "AG",
-        timeAgo: "Il y a 10 min",
-        text: "Bravo à l'AJAC pour cette mobilisation citoyenne exemplaire.",
-      },
-    ],
-  },
-  {
-    id: "p-2",
-    communityId: "02554230-fa9f-4494-acc0-1f0652e217a9",
-    author: "Gestionnaire Résidence UAC",
-    avatarText: "RU",
-    authorRole: "Gestion Résidences",
-    quarter: "Campus Universitaire Tankpè",
-    timeAgo: "Il y a 2 heures",
-    tag: "Avis aux Résidents",
-    tagColor: "warning",
-    content:
-      "Information maintenance : Des travaux de réfection du réseau hydraulique auront lieu demain de 10h à 14h au Pavillon Étoile (Chambres 101 à 212). Veuillez prendre vos dispositions et stocker de l'eau si nécessaire. Les équipes techniques restent joignables à l'accueil.",
-    likes: 19,
-    supports: 14,
-    comments: [
-      {
-        id: "c-3",
-        author: "Sylvie Dossou",
-        authorAvatar: "SD",
-        timeAgo: "Il y a 1h",
-        text: "Merci pour l'information préventive reçue à temps !",
-      },
-    ],
-  },
-  {
-    id: "p-3",
-    communityId: "62cd05e4-f423-4055-acb8-58af601405d0",
-    author: "Aïssatou Chabi",
-    avatarText: "AC",
-    authorRole: "Citoyenne Résidente",
-    quarter: "Godomey Centre",
-    timeAgo: "Il y a 4 heures",
-    tag: "Entraide Locale",
-    tagColor: "info",
-    content:
-      "Bonjour les voisins ! Je donne un bureau en bois massif et une chaise d'étude en très bon état pour étudiant ou écolier, à récupérer près du carrefour IITA. Premier venu, premier servi ! Envoyez-moi un message.",
-    likes: 31,
-    supports: 17,
-    comments: [],
-  },
-];
-
 function FeedContent() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { communities } = useCommunities();
@@ -118,11 +40,80 @@ function FeedContent() {
 
   const searchQuery = searchParams.get("q")?.trim() || "";
 
-  // Load posts from LocalStorage with fallback
+  // Load posts from LocalStorage with rich initial Benin community content
   useEffect(() => {
     setMounted(true);
-    const stored = getLocalState<PostData[]>(STORAGE_KEYS.FEED_POSTS, initialPosts);
-    setPosts(stored && stored.length > 0 ? stored : initialPosts);
+    const stored = getLocalState<PostData[]>(STORAGE_KEYS.FEED_POSTS, []);
+    if (stored && stored.length > 0) {
+      setPosts(stored);
+    } else {
+      const initialPosts: PostData[] = [
+        {
+          id: "post-benin-01",
+          author: "Aline Dossou",
+          avatarText: "AD",
+          authorRole: "Comité de Quartier",
+          quarter: "Haie-Vive (Cotonou)",
+          timeAgo: "Il y a 25 min",
+          tag: "Action Citoyenne",
+          tagColor: "success",
+          content: "🌿 Grande matinée salubrité & curage des caniveaux ce samedi matin dès 07h30 ! Tous les résidents sont invités avec leurs gants. Les sacs poubelles et le petit matériel sont déjà prêts.",
+          hasImage: true,
+          imageUrl: "/images/landing-community-hero.jpg",
+          imageCaption: "Riverains et bénévoles mobilisés pour le verdissement et la propreté de l'avenue.",
+          likes: 34,
+          supports: 19,
+          isLiked: false,
+          comments: [
+            {
+              id: "c-01",
+              author: "Romuald Kpodan",
+              authorAvatar: "RK",
+              timeAgo: "Il y a 10 min",
+              text: "Excellente initiative ! Je serai présent avec mes deux apprentis.",
+            },
+          ],
+        },
+        {
+          id: "post-benin-02",
+          author: "Marc Agbodjan",
+          avatarText: "MA",
+          authorRole: "Résident Foyer 12",
+          quarter: "Fidjrossè (Cotonou)",
+          timeAgo: "Il y a 1 heure",
+          tag: "Entraide Locale",
+          tagColor: "info",
+          content: "💡 Installation réussie de 2 lampadaires solaires communautaires au carrefour pharmacie ! Un grand merci aux cotisations des riverains qui ont permis de sécuriser le passage du soir.",
+          hasImage: true,
+          imageUrl: "/images/feed-solidarity.jpg",
+          imageCaption: "Installation et réglage des nouveaux panneaux solaires avec les jeunes du quartier.",
+          likes: 47,
+          supports: 28,
+          isLiked: true,
+          comments: [],
+        },
+        {
+          id: "post-benin-03",
+          author: "Dossou Fiacre",
+          avatarText: "DF",
+          authorRole: "Délégué Étudiant UAC",
+          quarter: "Tankpè (Abomey-Calavi)",
+          timeAgo: "Il y a 2 heures",
+          tag: "Résidences & Cité U",
+          tagColor: "primary",
+          content: "📚 Résidence Étudiante UAC : Rappel pour tous les colocataires du Pavillon Étoile, la distribution des quittances de loyer numérisées du mois est effective dans vos espaces personnels My Community.",
+          hasImage: true,
+          imageUrl: "/images/landing-residence-campus.jpg",
+          imageCaption: "Espace de travail et chambres étudiantes au campus d'Abomey-Calavi.",
+          likes: 22,
+          supports: 15,
+          isLiked: false,
+          comments: [],
+        },
+      ];
+      setPosts(initialPosts);
+      setLocalState(STORAGE_KEYS.FEED_POSTS, initialPosts);
+    }
   }, []);
 
   // Save posts to LocalStorage
@@ -203,6 +194,7 @@ function FeedContent() {
         tagColor: payload.tagColor,
         content: payload.content,
         hasImage: payload.hasImage,
+        imageUrl: payload.imageUrl,
         imageCaption: payload.hasImage
           ? `Photo partagée par ${authorName} dans ${payload.quarter}.`
           : undefined,

@@ -15,12 +15,13 @@ import {
   ChevronDownIcon,
 } from "@/components/icons";
 import Badge from "@/components/ui/badge/Badge";
-import { Check, Search, Globe2, ChevronDown, Lock, Compass } from "lucide-react";
+import { Check, Search, Globe2, ChevronDown, Lock, Compass, ShieldCheck } from "lucide-react";
 
 type NavSubItem = {
   name: string;
   path: string;
   executiveOnly?: boolean;
+  adminOnly?: boolean;
 };
 
 type NavItem = {
@@ -29,6 +30,7 @@ type NavItem = {
   path: string;
   badge?: string;
   executiveOnly?: boolean;
+  adminOnly?: boolean;
   subItems?: NavSubItem[];
 };
 
@@ -101,7 +103,7 @@ const navigationGroups: { title: string; items: NavItem[] }[] = [
         badge: "Citoyen",
         subItems: [
           { name: "Supervision des Espaces", path: "/dashboard/communities" },
-          { name: "Instruction des Propositions", path: "/dashboard/communities?tab=proposals", executiveOnly: true },
+          { name: "Instruction des Propositions", path: "/dashboard/communities?tab=proposals", adminOnly: true },
           { name: "Modération & Rôles", path: "/dashboard/communities?tab=moderation", executiveOnly: true },
         ],
       },
@@ -116,13 +118,25 @@ const navigationGroups: { title: string; items: NavItem[] }[] = [
       },
     ],
   },
+  {
+    title: "ADMINISTRATION SYSTÈME",
+    items: [
+      {
+        name: "Tour de Contrôle Plateforme",
+        icon: <ShieldCheck className="size-5 text-amber-500" />,
+        path: "/dashboard/admin",
+        badge: "Super-Admin",
+        adminOnly: true,
+      },
+    ],
+  },
 ];
 
 const AppSidebarContent: React.FC = () => {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentTab = searchParams ? searchParams.get("tab") : null;
-  const { isExecutive } = usePermissions();
+  const { isExecutive, isAdmin } = usePermissions();
 
   const {
     isExpanded,
@@ -172,11 +186,11 @@ const AppSidebarContent: React.FC = () => {
     return navigationGroups
       .map((group) => {
         const items = group.items
-          .filter((item) => !item.executiveOnly || isExecutive)
+          .filter((item) => (!item.executiveOnly || isExecutive) && (!item.adminOnly || isAdmin))
           .map((item) => {
             if (!item.subItems) return item;
             const subItems = item.subItems.filter(
-              (sub) => !sub.executiveOnly || isExecutive
+              (sub) => (!sub.executiveOnly || isExecutive) && (!sub.adminOnly || isAdmin)
             );
             return { ...item, subItems };
           })
@@ -184,7 +198,7 @@ const AppSidebarContent: React.FC = () => {
         return { ...group, items };
       })
       .filter((group) => group.items.length > 0);
-  }, [isExecutive]);
+  }, [isExecutive, isAdmin]);
 
   // Helper pour vérifier l'activation exacte de l'élément (chemin ou onglet ?tab=...)
   const isSubItemActive = (subPath: string) => {
