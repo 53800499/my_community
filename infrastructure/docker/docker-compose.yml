@@ -1,0 +1,50 @@
+# Référence d'orchestration locale (symétrique à la racine)
+# Voir /docker-compose.yml
+name: my-community
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: my-community-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-my_community}
+      POSTGRES_USER: ${POSTGRES_USER:-community_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-community_dev_password_2026}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - my_community_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-community_app} -d ${POSTGRES_DB:-my_community}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: my-community-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minio_admin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-minio_secret_password}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - my_community_s3data:/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: my-community-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - my_community_redisdata:/data
+
+volumes:
+  my_community_pgdata:
+  my_community_s3data:
+  my_community_redisdata:

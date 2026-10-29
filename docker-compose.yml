@@ -1,0 +1,76 @@
+name: my-community
+
+services:
+  # Base Relationnelle Principale (PostgreSQL 17)
+  postgres:
+    image: postgres:17-alpine
+    container_name: my-community-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-my_community}
+      POSTGRES_USER: ${POSTGRES_USER:-community_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-community_dev_password_2026}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - my_community_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-community_app} -d ${POSTGRES_DB:-my_community}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Stockage Objet S3 Local (MinIO)
+  minio:
+    image: minio/minio:latest
+    container_name: my-community-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minio_admin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-minio_secret_password}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - my_community_s3data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Initialisation du bucket MinIO par défaut
+  minio-init:
+    image: minio/mc:latest
+    container_name: my-community-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 ${S3_ACCESS_KEY_ID:-minio_admin} ${S3_SECRET_ACCESS_KEY:-minio_secret_password};
+      /usr/bin/mc mb --ignore-existing myminio/${S3_BUCKET_NAME:-mycommunity-private-attachments};
+      exit 0;
+      "
+
+  # Cache Éphémère, Sessions & Rate Limiting (Redis 7)
+  redis:
+    image: redis:7-alpine
+    container_name: my-community-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - my_community_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  my_community_pgdata:
+  my_community_s3data:
+  my_community_redisdata:

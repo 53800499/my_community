@@ -1,0 +1,194 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-inter: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  --breakpoint-2xsm: 375px;
+  --breakpoint-xsm: 425px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  --color-brand-25: #f4f4fe;
+  --color-brand-50: #ecebfa;
+  --color-brand-100: #dbd8f5;
+  --color-brand-200: #bcb5ee;
+  --color-brand-300: #9387e3;
+  --color-brand-400: #6a57d6;
+  --color-brand-500: #4f3dc4;
+  --color-brand-600: #3730A3;
+  --color-brand-700: #2c2584;
+  --color-brand-800: #241e6c;
+  --color-brand-900: #171638;
+
+  --color-accent-500: #F97373;
+  --color-accent-600: #E86565;
+
+  --color-success-50: #f0fdf4;
+  --color-success-500: #15803D;
+  --color-success-600: #166534;
+
+  --color-warning-50: #fffbeb;
+  --color-warning-500: #B45309;
+
+  --color-error-50: #fef2f2;
+  --color-error-500: #B91C1C;
+  --color-error-600: #991b1b;
+
+  --color-gray-25: #fcfcfd;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f2f4f7;
+  --color-gray-200: #e4e7ec;
+  --color-gray-300: #d0d5dd;
+  --color-gray-400: #98a2b3;
+  --color-gray-500: #667085;
+  --color-gray-600: #475467;
+  --color-gray-700: #344054;
+  --color-gray-800: #1d2939;
+  --color-gray-900: #101828;
+}
+
+:root {
+  color-scheme: light;
+
+  --brand-primary: #3730A3;
+  --brand-secondary: #7C3AED;
+  --brand-accent: #F97373;
+  --brand-deep: #171638;
+
+  --color-canvas: #F8F9FC;
+  --color-surface: #FFFFFF;
+  --color-surface-subtle: #F1F3F9;
+  --color-text-primary: #111827;
+  --color-text-secondary: #4B5563;
+  --color-border: #E5E7EB;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --color-canvas: #0B0F19;
+  --color-surface: #111827;
+  --color-surface-subtle: #1F2937;
+  --color-text-primary: #F9FAFB;
+  --color-text-secondary: #9CA3AF;
+  --color-border: #1F2937;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-text-primary);
+  font-family: var(--font-inter);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* React Phone Number Input Soft & Modern Styling */
+.mc-phone-container .PhoneInput {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  padding: 0 0.875rem;
+  transition: all 0.15s ease-in-out;
+}
+
+.dark .mc-phone-container .PhoneInput {
+  border-color: #374151;
+  background-color: #1f2937;
+}
+
+.mc-phone-container .PhoneInput:focus-within {
+  border-color: #4f46e5;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.dark .mc-phone-container .PhoneInput:focus-within {
+  border-color: #6366f1;
+  background-color: #111827;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.mc-phone-container .PhoneInputCountry {
+  display: flex;
+  align-items: center;
+  margin-right: 0.625rem;
+  padding-right: 0.625rem;
+  border-right: 1px solid #e5e7eb;
+  position: relative;
+}
+
+.dark .mc-phone-container .PhoneInputCountry {
+  border-color: #374151;
+}
+
+.mc-phone-container .PhoneInputCountrySelect {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  z-index: 10;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.mc-phone-container .PhoneInputCountryIcon {
+  width: 1.5rem;
+  height: 1.05rem;
+  border-radius: 3px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.mc-phone-container .PhoneInputCountrySelectArrow {
+  margin-left: 0.4rem;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-style: solid;
+  border-color: #6b7280;
+  border-top-width: 0;
+  border-bottom-width: 1.5px;
+  border-left-width: 0;
+  border-right-width: 1.5px;
+  transform: rotate(45deg);
+  margin-bottom: 2px;
+}
+
+.mc-phone-container .PhoneInputInput {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.875rem;
+  color: #111827;
+  font-family: inherit;
+}
+
+.dark .mc-phone-container .PhoneInputInput {
+  color: #f9fafb;
+}
+
+.mc-phone-container .PhoneInputInput::placeholder {
+  color: #9ca3af;
+}
+

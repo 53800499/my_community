@@ -1,0 +1,34 @@
+{
+  "name": "my-community",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.12.3",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "database"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:api": "pnpm --filter @my-community/api run start:dev",
+    "dev:web": "pnpm --filter @my-community/web run dev",
+    "build": "turbo run build",
+    "build:api": "pnpm --filter @my-community/api run build",
+    "build:web": "pnpm --filter @my-community/web run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:unit": "pnpm --filter @my-community/api run test",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "db:push": "pnpm --filter @my-community/database run prisma:push",
+    "db:migrate": "pnpm --filter @my-community/database run prisma:migrate",
+    "db:generate": "pnpm --filter @my-community/database run prisma:generate",
+    "db:studio": "pnpm --filter @my-community/database run prisma:studio",
+    "db:seed": "pnpm --filter @my-community/database run seed",
+    "db:seed:territories": "pnpm --filter @my-community/database run seed:territories"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.4"
+  }
+}

@@ -1,0 +1,39 @@
+name: my_community
+description: "My Community — Application Mobile Citoyenne Multi-Communautés (Flutter)"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Navigation & Routing
+  go_router: ^14.8.1
+
+  # State Management (ADR-009)
+  flutter_riverpod: ^2.6.1
+
+  # Client HTTP (ADR-007)
+  dio: ^5.8.0+1
+
+  # Cache Privé & Base SQLite Hors Ligne (ADR-008)
+  drift: ^2.26.0
+  sqlite3_flutter_libs: ^0.5.28
+  path_provider: ^2.1.5
+  path: ^1.9.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # Générateurs de code Drift
+  drift_dev: ^2.26.0
+  build_runner: ^2.4.15
+
+flutter:
+  uses-material-design: true

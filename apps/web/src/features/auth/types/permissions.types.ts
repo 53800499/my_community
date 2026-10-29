@@ -1,0 +1,142 @@
+/**
+ * Types et énumérations des rôles et permissions du système My Community.
+ * Conforme SOLID (ISP & OCP) : permissions fines et granulaires.
+ */
+
+export type PlatformRole =
+  | "SUPER_ADMIN"
+  | "ADMIN"
+  | "SYNDIC"
+  | "PRESIDENT"
+  | "CITIZEN";
+
+export type CommunityRole =
+  | "ADMIN"
+  | "MANAGER"
+  | "MODERATOR"
+  | "MEMBER";
+
+export type AssociationRole =
+  | "PRESIDENT"
+  | "SECRETARY"
+  | "TREASURER"
+  | "BOARD_MEMBER"
+  | "MEMBER";
+
+export type AppPermission =
+  // Fil Citoyen
+  | "FEED_PUBLISH"
+  | "FEED_COMMENT"
+  | "FEED_REACT"
+  // Espaces & Communautés
+  | "COMMUNITY_PROPOSE"
+  | "COMMUNITY_JOIN"
+  | "COMMUNITY_REVIEW"
+  // Résidences & Cités Universitaires
+  | "RESIDENCE_VIEW"
+  | "RESIDENCE_MANAGE_ROOMS"
+  | "RESIDENCE_MANAGE_CONTRACTS"
+  // Associations & Gouvernance
+  | "ASSOCIATION_VIEW"
+  | "ASSOCIATION_MANAGE_MEMBERS"
+  | "ASSOCIATION_MANAGE_FINANCE"
+  | "ASSOCIATION_VIEW_SECRETS" // Secrets associatifs : mandats dirigeants, conventions intégration, habilitations
+  // Finances & Trésorerie
+  | "FINANCE_VIEW_OVERVIEW"
+  | "FINANCE_VIEW_LEDGER"
+  | "FINANCE_MANAGE_EXPENSES"
+  | "FINANCE_VIEW_COTISATIONS"
+  | "FINANCE_MANAGE_LEASES"
+  // Administration & Territoires
+  | "TERRITORIES_MANAGE"
+  | "AUDIT_VIEW"
+  | "USERS_MANAGE";
+
+/**
+ * Matrice de permissions par défaut selon le rôle de l'utilisateur.
+ */
+export const ROLE_PERMISSIONS: Record<PlatformRole, AppPermission[]> = {
+  SUPER_ADMIN: [
+    "FEED_PUBLISH",
+    "FEED_COMMENT",
+    "FEED_REACT",
+    "COMMUNITY_PROPOSE",
+    "COMMUNITY_JOIN",
+    "COMMUNITY_REVIEW",
+    "RESIDENCE_VIEW",
+    "RESIDENCE_MANAGE_ROOMS",
+    "RESIDENCE_MANAGE_CONTRACTS",
+    "ASSOCIATION_VIEW",
+    "ASSOCIATION_MANAGE_MEMBERS",
+    "ASSOCIATION_MANAGE_FINANCE",
+    "ASSOCIATION_VIEW_SECRETS",
+    "FINANCE_VIEW_OVERVIEW",
+    "FINANCE_VIEW_LEDGER",
+    "FINANCE_MANAGE_EXPENSES",
+    "FINANCE_VIEW_COTISATIONS",
+    "FINANCE_MANAGE_LEASES",
+    "TERRITORIES_MANAGE",
+    "AUDIT_VIEW",
+    "USERS_MANAGE",
+  ],
+  ADMIN: [
+    "FEED_PUBLISH",
+    "FEED_COMMENT",
+    "FEED_REACT",
+    "COMMUNITY_PROPOSE",
+    "COMMUNITY_JOIN",
+    "COMMUNITY_REVIEW",
+    "RESIDENCE_VIEW",
+    "RESIDENCE_MANAGE_ROOMS",
+    "RESIDENCE_MANAGE_CONTRACTS",
+    "ASSOCIATION_VIEW",
+    "ASSOCIATION_MANAGE_MEMBERS",
+    "ASSOCIATION_MANAGE_FINANCE",
+    "ASSOCIATION_VIEW_SECRETS",
+    "FINANCE_VIEW_OVERVIEW",
+    "FINANCE_VIEW_LEDGER",
+    "FINANCE_MANAGE_EXPENSES",
+    "FINANCE_VIEW_COTISATIONS",
+    "FINANCE_MANAGE_LEASES",
+    "AUDIT_VIEW",
+  ],
+  SYNDIC: [
+    "FEED_PUBLISH",
+    "FEED_COMMENT",
+    "FEED_REACT",
+    "COMMUNITY_PROPOSE",
+    "COMMUNITY_JOIN",
+    "RESIDENCE_VIEW",
+    "RESIDENCE_MANAGE_ROOMS",
+    "RESIDENCE_MANAGE_CONTRACTS",
+    "FINANCE_VIEW_OVERVIEW",
+    "FINANCE_VIEW_LEDGER",
+    "FINANCE_MANAGE_LEASES",
+  ],
+  PRESIDENT: [
+    "FEED_PUBLISH",
+    "FEED_COMMENT",
+    "FEED_REACT",
+    "COMMUNITY_PROPOSE",
+    "COMMUNITY_JOIN",
+    "ASSOCIATION_VIEW",
+    "ASSOCIATION_MANAGE_MEMBERS",
+    "ASSOCIATION_MANAGE_FINANCE",
+    "ASSOCIATION_VIEW_SECRETS",
+    "FINANCE_VIEW_OVERVIEW",
+    "FINANCE_VIEW_LEDGER",
+    "FINANCE_MANAGE_EXPENSES",
+    "FINANCE_VIEW_COTISATIONS",
+    "FINANCE_MANAGE_LEASES",
+  ],
+  CITIZEN: [
+    "FEED_PUBLISH",
+    "FEED_COMMENT",
+    "FEED_REACT",
+    "COMMUNITY_PROPOSE",
+    "COMMUNITY_JOIN",
+    "ASSOCIATION_VIEW",
+    "RESIDENCE_VIEW",
+    "FINANCE_VIEW_COTISATIONS",
+  ],
+};
