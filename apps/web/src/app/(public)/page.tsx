@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -33,8 +33,15 @@ import HeroAuroraMesh from "@/components/public/HeroAuroraMesh";
 import SpotlightCard from "@/components/public/SpotlightCard";
 
 export default function PublicLandingPage() {
+  const [mounted, setMounted] = useState(false);
   const { isAuthenticated } = useAuth();
   const [selectedSpace, setSelectedSpace] = useState<"CITIZEN" | "RESIDENCE" | "ASSOCIATION">("CITIZEN");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isUserAuthenticated = mounted && isAuthenticated;
 
   return (
     <div className="relative overflow-hidden pb-20 sm:pb-12">
@@ -72,7 +79,7 @@ export default function PublicLandingPage() {
 
         {/* Call To Actions */}
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto sm:max-w-none">
-          {isAuthenticated ? (
+          {isUserAuthenticated ? (
             <Link
               href="/feed"
               className="w-full sm:w-auto inline-flex h-13 items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 px-8 text-sm font-bold text-white shadow-lg shadow-brand-500/25 transition hover:shadow-xl hover:scale-[1.01] active:scale-95"
@@ -785,11 +792,11 @@ export default function PublicLandingPage() {
           </div>
 
           <Link
-            href={isAuthenticated ? "/feed" : "/register"}
+            href={isUserAuthenticated ? "/feed" : "/register"}
             className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 px-4 text-xs font-bold text-white shadow-md shadow-brand-500/25 active:scale-95 transition"
           >
             <Sparkles className="size-3.5" />
-            <span>{isAuthenticated ? "Mon Espace" : "Créer un compte"}</span>
+            <span>{isUserAuthenticated ? "Mon Espace" : "Créer un compte"}</span>
           </Link>
         </div>
       </div>

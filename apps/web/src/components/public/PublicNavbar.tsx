@@ -87,15 +87,18 @@ export const PublicNavbar: React.FC = () => {
         </nav>
 
         {/* Right Actions */}
-        <div className="flex items-center gap-2">
-          <ThemeToggleButton />
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Desktop-only Theme Toggle (on mobile, moved to the drawer submenu) */}
+          <div className="hidden md:flex">
+            <ThemeToggleButton />
+          </div>
 
           {mounted && isAuthenticated ? (
             /* Logged in state */
             <div className="flex items-center gap-2">
               <Link
                 href="/feed"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-brand-700"
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-brand-700"
               >
                 <span>Mon Espace</span>
                 <ArrowRight className="size-3.5" />
@@ -112,17 +115,18 @@ export const PublicNavbar: React.FC = () => {
             </div>
           ) : (
             /* Visitor state */
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <Link
                 href="/login"
-                className="text-xs font-semibold text-gray-700 hover:text-brand-600 dark:text-gray-300 dark:hover:text-white px-2.5 py-1.5 transition"
+                className="text-xs font-semibold text-gray-700 hover:text-brand-600 dark:text-gray-300 dark:hover:text-white px-2 py-1.5 transition"
               >
                 Connexion
               </Link>
 
+              {/* Desktop-only "Rejoindre" button (on mobile, placed in the drawer submenu) */}
               <Link
                 href="/register"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-brand-700 hover:scale-[1.02]"
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-brand-700 hover:scale-[1.02]"
               >
                 <Sparkles className="size-3.5" />
                 <span>Rejoindre</span>
@@ -135,7 +139,7 @@ export const PublicNavbar: React.FC = () => {
             type="button"
             onClick={() => setMobileMenuOpen((prev) => !prev)}
             aria-label={mobileMenuOpen ? "Fermer le menu" : "Ouvrir le menu"}
-            className="inline-flex size-9 items-center justify-center rounded-xl border border-gray-200/80 bg-white text-gray-600 transition hover:bg-gray-100 hover:text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 md:hidden ml-1"
+            className="inline-flex size-9 items-center justify-center rounded-xl border border-gray-200/80 bg-white text-gray-600 transition hover:bg-gray-100 hover:text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 md:hidden ml-0.5"
           >
             {mobileMenuOpen ? <X className="size-4" /> : <Menu className="size-4" />}
           </button>
@@ -211,7 +215,15 @@ export const PublicNavbar: React.FC = () => {
                 <span className="text-[10px] font-bold text-gray-400">Bénin</span>
               </Link>
 
-              <div className="mt-3 pt-4 border-t border-gray-100 dark:border-gray-800/80 flex flex-col gap-2.5">
+              {/* Mobile Theme Toggle Row (Requested in drawer submenu) */}
+              <div className="flex items-center justify-between rounded-xl bg-gray-50/80 px-3.5 py-2.5 dark:bg-gray-900/60 border border-gray-100 dark:border-gray-800/60 my-1">
+                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  Mode Sombre / Clair
+                </span>
+                <ThemeToggleButton />
+              </div>
+
+              <div className="mt-2 pt-3 border-t border-gray-100 dark:border-gray-800/80 flex flex-col gap-2.5">
                 {mounted && isAuthenticated ? (
                   <>
                     <Link
@@ -236,20 +248,21 @@ export const PublicNavbar: React.FC = () => {
                   </>
                 ) : (
                   <>
+                    {/* Primary "Rejoindre" Button inside Mobile Submenu */}
                     <Link
                       href="/register"
                       onClick={() => setMobileMenuOpen(false)}
                       className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 text-xs font-bold text-white shadow-md shadow-brand-500/25 active:scale-95 transition"
                     >
                       <Sparkles className="size-4" />
-                      <span>Créer mon compte citoyen gratuit</span>
+                      <span>Rejoindre My Community Bénin</span>
                     </Link>
                     <Link
                       href="/login"
                       onClick={() => setMobileMenuOpen(false)}
                       className="flex h-11 items-center justify-center rounded-2xl border border-gray-200 text-xs font-bold text-gray-800 dark:border-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-900 active:scale-95 transition"
                     >
-                      <span>Se connecter</span>
+                      <span>Se connecter à mon compte</span>
                     </Link>
                   </>
                 )}

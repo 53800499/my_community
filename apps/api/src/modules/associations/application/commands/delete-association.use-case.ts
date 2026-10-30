@@ -57,7 +57,7 @@ export class DeleteAssociationUseCase {
     }
 
     // Vérification de l'autorité légale
-    const members = await this.reader.findMembers(command.associationId);
+    const members = await this.reader.listMembers(command.associationId);
     const actorMember = members.find((m) => m.userId === command.userId);
     const isPresident = actorMember?.role === 'PRESIDENT';
     const isAuthorized = isPresident || Boolean(command.isPlatformAdmin);
@@ -97,6 +97,7 @@ export class DeleteAssociationUseCase {
           dissolvedAt: new Date().toISOString(),
           membersCountAtDissolution: members.length,
         },
+        createdAt: new Date(),
       });
       await this.auditLogger.log(auditLog);
     }

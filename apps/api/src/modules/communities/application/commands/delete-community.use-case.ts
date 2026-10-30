@@ -91,6 +91,7 @@ export class DeleteCommunityUseCase {
           territoryId: community.territoryId,
           deletedAt: new Date().toISOString(),
         },
+        createdAt: new Date(),
       });
       await this.auditLogger.log(log);
     }

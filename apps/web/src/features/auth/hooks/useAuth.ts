@@ -21,11 +21,14 @@ export interface UseAuthReturn {
  */
 export function useAuth(): UseAuthReturn {
   const [currentUser, setCurrentUser] = useState<ApiAuthSuccess["user"] | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setCurrentUser(authApiService.getCurrentUser());
+    const user = authApiService.getCurrentUser();
+    setCurrentUser(user);
+    setIsAuthenticated(!!user || authApiService.isAuthenticated());
   }, []);
 
   const login = useCallback(async (identifier: string, password: string): Promise<ApiAuthSuccess> => {
@@ -34,6 +37,7 @@ export function useAuth(): UseAuthReturn {
     try {
       const res = await authApiService.login(identifier, password);
       setCurrentUser(res.user);
+      setIsAuthenticated(true);
       return res;
     } catch (err: unknown) {
       const parsed = ErrorParserService.parse(
@@ -53,6 +57,7 @@ export function useAuth(): UseAuthReturn {
     try {
       const res = await authApiService.register(input);
       setCurrentUser(res.user);
+      setIsAuthenticated(true);
       return res;
     } catch (err: unknown) {
       const parsed = ErrorParserService.parse(
@@ -69,12 +74,13 @@ export function useAuth(): UseAuthReturn {
   const logout = useCallback(() => {
     authApiService.logout();
     setCurrentUser(null);
+    setIsAuthenticated(false);
   }, []);
 
   return {
     currentUser,
     user: currentUser,
-    isAuthenticated: !!currentUser || authApiService.isAuthenticated(),
+    isAuthenticated,
     isLoading,
     error,
     setError,
